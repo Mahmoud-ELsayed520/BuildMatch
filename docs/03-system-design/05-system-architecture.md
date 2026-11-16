@@ -201,7 +201,7 @@ graph TB
 - **Path Isolation Convention:**
   - `project-files`: `{project_id}/{file_name}`
   - `verification-docs`: `{contractor_id}/{file_name}`
-  - `progress-photos`: `{milestone_id}/{file_name}`
+  - `progress-photos`: `{package_id}/{milestone_id}/{file_name}`
 - **Security Guardrails:** Storage policies in migration 04 evaluate the path prefix against relational database tables (`projects`, `contractor_profiles`, `milestones`) to ensure users can only upload files to their authorized folders.
 - **File Limits:**
   - `project-files`: 25 MiB (PDF, PNG, JPG, DWG).

@@ -215,21 +215,24 @@ sequenceDiagram
   PropSvc->>RPC: select_contractor_for_package(p_package_id, p_proposal_id)
 
   Note over RPC: BEGIN TRANSACTION
-  RPC->>DB: SELECT status, owner_id FROM project_packages WHERE id=p_package_id FOR UPDATE OF pkg;
-  Note over RPC,DB: Row-level Mutex Lock Acquired on Package
+  RPC->>DB: SELECT p.id, p.owner_id, pkg.status FROM project_packages pkg JOIN projects p ON p.id=pkg.project_id WHERE pkg.id=p_package_id FOR UPDATE OF pkg;
+  Note over RPC,DB: Row-level Mutex Lock Acquired on Work Package
+
+  RPC->>DB: SELECT contractor_id, status FROM proposals WHERE id=p_proposal_id AND package_id=p_package_id FOR UPDATE;
+  Note over RPC,DB: Row-level Lock Acquired on Target Proposal
 
   RPC->>DB: Verify caller is owner_id AND package.status IN ('open', 'under_review')
-  RPC->>DB: Verify contractor is approved
+  RPC->>DB: Verify contractor is approved (verification_status = 'approved')
 
   alt Valid Proposal & Open Package
-    RPC->>DB: UPDATE proposals SET status='accepted', decision_at=NOW() WHERE id=p_proposal_id
-    RPC->>DB: UPDATE proposals SET status='rejected', decision_reason='Another contractor selected' WHERE package_id=p_package_id AND id <> p_proposal_id AND status='submitted'
-    RPC->>DB: UPDATE project_packages SET status='assigned', assigned_contractor_id=v_contractor_id, assigned_proposal_id=p_proposal_id, assigned_at=NOW()
-    RPC->>DB: INSERT INTO audit_logs (action='contractor_selected', entity_type='project_package', ...)
-    RPC->>DB: INSERT INTO notifications (Contractor 1: "Proposal Accepted")
-    RPC->>DB: INSERT INTO notifications (Contractor 2: "Proposal Rejected")
+    RPC->>DB: UPDATE proposals SET status='accepted', decision_at=NOW(), decision_reason='Selected by project owner' WHERE id=p_proposal_id
+    RPC->>DB: UPDATE proposals SET status='rejected', decision_at=NOW(), decision_reason='Another contractor was selected for this package' WHERE package_id=p_package_id AND id <> p_proposal_id AND status='submitted'
+    RPC->>DB: UPDATE project_packages SET status='assigned', assigned_contractor_id=v_contractor_id, assigned_proposal_id=p_proposal_id, assigned_at=NOW() WHERE id=p_package_id
+    RPC->>DB: UPDATE projects SET status = CASE WHEN all_assigned THEN 'assigned' ELSE 'partially_assigned' END WHERE id=v_project_id
+    RPC->>DB: INSERT INTO audit_logs (action='SELECT_CONTRACTOR_PROPOSAL', entity_type='project_packages', entity_id=p_package_id, details={proposal_id, contractor_id, project_id})
+    RPC->>DB: INSERT INTO notifications (user_id=v_contractor_id, title='مبروك! تم قبول عرضك', type='proposal_accepted')
     Note over RPC: COMMIT TRANSACTION
-    RPC-->>PropSvc: Return Success JSON { package_id, status: 'assigned' }
+    RPC-->>PropSvc: Return Success JSON { package_id, proposal_id, assigned_contractor_id }
     PropSvc-->>UI: Selection Successful
     UI-->>Landowner: Display Success Modal & Transition to Execution Dashboard
   else Package already assigned or concurrency race
@@ -261,7 +264,7 @@ sequenceDiagram
   Contractor->>UI: Logs Milestone Progress (Percentage: 100%, Notes)
   Contractor->>UI: Attaches Site Photos (JPEG/PNG)
   UI->>ExecSvc: logProgress(milestoneId, { notes, percentage: 100, files })
-  ExecSvc->>StorageAPI: upload to 'progress-photos' ({milestone_id}/{filename})
+  ExecSvc->>StorageAPI: upload to 'progress-photos' ({package_id}/{milestone_id}/{filename})
   StorageAPI-->>ExecSvc: Upload URLs returned
   ExecSvc->>DB: INSERT INTO progress_updates (milestone_id, contractor_id, percentage_completed, photos)
   ExecSvc->>DB: UPDATE milestones SET status='submitted_for_review', submitted_at=NOW()
@@ -315,20 +318,24 @@ sequenceDiagram
   Landowner->>UI: Reviews Scope & Financial Impact in Dashboard
   alt Landowner Approves Change
     Landowner->>UI: Clicks "Approve Change Request"
-    UI->>ExecSvc: decideChangeRequest(changeRequestId, 'approved', 'Approved based on updated drawings')
-    ExecSvc->>RPC: decide_change_request(p_change_request_id, 'approved', notes)
-    RPC->>DB: UPDATE change_requests SET status='approved', decided_at=NOW(), decision_by=auth.uid()
-    RPC->>DB: INSERT INTO audit_logs (action='change_request_approved', entity_type='change_request', ...)
-    RPC->>DB: INSERT INTO notifications (contractor_id, "Change Request Approved")
-    RPC-->>ExecSvc: Success JSON
+    UI->>ExecSvc: decideChangeRequest(requestId, 'approved', 'Approved based on updated drawings')
+    ExecSvc->>RPC: decide_change_request(p_request_id, 'approved', notes)
+    Note over RPC: Verifies caller is landowner (p.owner_id = auth.uid())
+    RPC->>DB: UPDATE change_requests SET status='approved', decision_by=auth.uid(), decision_notes=notes, decided_at=NOW() WHERE id=p_request_id
+    RPC->>DB: UPDATE project_packages SET estimated_budget = estimated_budget + cost_impact, target_duration_days = target_duration_days + time_impact WHERE id=v_package_id
+    Note over RPC: Note: No audit_log inserted in current RPC implementation
+    RPC->>DB: INSERT INTO notifications (user_id=v_requested_by, title='تحديث طلب التغيير', type='change_request_approved')
+    RPC-->>ExecSvc: Return Success JSON { success: true, status: 'approved' }
     ExecSvc-->>UI: Decision Recorded
     UI-->>Landowner: "Change request approved"
   else Landowner Rejects Change
     Landowner->>UI: Clicks "Reject Change Request" with Reason
-    UI->>ExecSvc: decideChangeRequest(changeRequestId, 'rejected', 'Cost deemed excessive')
-    ExecSvc->>RPC: decide_change_request(p_change_request_id, 'rejected', notes)
-    RPC->>DB: UPDATE change_requests SET status='rejected', decided_at=NOW()
-    RPC-->>ExecSvc: Rejection Recorded
+    UI->>ExecSvc: decideChangeRequest(requestId, 'rejected', 'Cost deemed excessive')
+    ExecSvc->>RPC: decide_change_request(p_request_id, 'rejected', notes)
+    RPC->>DB: UPDATE change_requests SET status='rejected', decision_by=auth.uid(), decision_notes=notes, decided_at=NOW() WHERE id=p_request_id
+    Note over RPC: Package budget and timeline remain unchanged
+    RPC->>DB: INSERT INTO notifications (user_id=v_requested_by, title='تحديث طلب التغيير', type='change_request_rejected')
+    RPC-->>ExecSvc: Return Rejection JSON { success: true, status: 'rejected' }
     ExecSvc-->>UI: Decision Recorded
     UI-->>Landowner: "Change request rejected"
   end
@@ -358,11 +365,12 @@ sequenceDiagram
   Contractor->>UI: Clicks "Request Package Handover"
   UI->>ExecSvc: requestPackageHandover(packageId)
   ExecSvc->>RPC_H: request_package_handover(p_package_id)
-  RPC_H->>DB: Verify all milestones have status='approved'
-  RPC_H->>DB: UPDATE project_packages SET status='pending_handover', handover_requested_at=NOW()
-  RPC_H->>DB: INSERT INTO audit_logs (action='handover_requested', ...)
-  RPC_H->>DB: INSERT INTO notifications (owner_id, "Contractor requested final handover inspection")
-  RPC_H-->>ExecSvc: Success JSON
+  Note over RPC_H: Verifies caller is assigned contractor (assigned_contractor_id = auth.uid())
+  RPC_H->>DB: SELECT COUNT(*) FROM milestones WHERE package_id=p_package_id AND status <> 'approved'
+  RPC_H->>DB: UPDATE project_packages SET status='pending_handover', handover_requested_at=NOW() WHERE id=p_package_id
+  Note over RPC_H: Note: No audit_log inserted in request_package_handover
+  RPC_H->>DB: INSERT INTO notifications (user_id=v_owner_id, title='طلب استلام حزمة عمل', type='handover_requested')
+  RPC_H-->>ExecSvc: Return Success JSON { success: true, status: 'pending_handover' }
   ExecSvc-->>UI: Package transitioned to 'pending_handover'
   UI-->>Contractor: "Handover request sent to landowner"
 
@@ -371,11 +379,12 @@ sequenceDiagram
   Landowner->>UI: Clicks "Confirm & Approve Package Completion"
   UI->>ExecSvc: approvePackageCompletion(packageId)
   ExecSvc->>RPC_C: approve_package_completion(p_package_id)
-  RPC_C->>DB: UPDATE project_packages SET status='completed', completed_at=NOW()
-  RPC_C->>DB: Check parent project package statuses; update project if all complete
-  RPC_C->>DB: INSERT INTO audit_logs (action='package_completed', ...)
-  RPC_C->>DB: INSERT INTO notifications (contractor_id, "Package marked completed! Review unlocked.")
-  RPC_C-->>ExecSvc: Success JSON
+  Note over RPC_C: Verifies caller is landowner (p.owner_id = auth.uid()) and status is 'pending_handover'
+  RPC_C->>DB: UPDATE project_packages SET status='completed', completed_at=NOW() WHERE id=p_package_id
+  RPC_C->>DB: Check sibling packages; if all completed, UPDATE projects SET status='completed' WHERE id=v_project_id
+  RPC_C->>DB: INSERT INTO audit_logs (action='APPROVE_PACKAGE_COMPLETION', entity_type='project_packages', entity_id=p_package_id, details={project_id, all_completed})
+  RPC_C->>DB: INSERT INTO notifications (user_id=v_assigned_contractor, title='تم اعتماد اكتمال حزمة العمل بنجاح', type='package_completed')
+  RPC_C-->>ExecSvc: Return Success JSON { success: true, status: 'completed' }
   ExecSvc-->>UI: Package status updated to 'completed'
   UI-->>Landowner: "Package completed! You can now write a review."
 ```

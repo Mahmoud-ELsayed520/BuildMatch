@@ -184,3 +184,51 @@ In strict accordance with execution guidelines, the documentation clearly distin
 - [x] 10 Architectural Decision Records (ADRs) and End-to-End Traceability Matrix.
 - [x] Central diagram catalog with all 33 editable Mermaid `.mmd` source files.
 - [x] Documentation-only changes; zero application code or migration regressions.
+
+---
+
+## 10. Correction Addendum: Technical Accuracy & Implementation Calibration
+
+Following a comprehensive audit against SQL migrations (`20261116000001_initial_schema.sql` through `20261116000004_storage_buckets.sql`), the following targeted corrections were applied to calibrate the System Analysis & Design documentation package with 100% technical precision:
+
+### 10.1 Confirmed Discrepancies & Exact Corrections
+
+1. **Physical ERD Data Types (`06-database-design.md`, `diagrams/erd-physical.mmd`):**
+   - Corrected PostgreSQL array syntax from pseudo-type `text_arr specializations` to standard `text[] specializations` in the `contractor_profiles` table, strictly conforming to migration 01 schema definition.
+
+2. **Atomic Contractor Selection Sequence (`09-sequence-diagrams.md`, `diagrams/sequence-05-atomic-selection.mmd`):**
+   - Calibrated `select_contractor_for_package` flow to match exact migration 03 behavior:
+     - Row-level mutex locks (`FOR UPDATE`) on package and selected proposal.
+     - Audit log row recorded with action `'SELECT_CONTRACTOR_PROPOSAL'` on entity `'project_packages'` with `p_package_id`.
+     - In-app notification dispatched exclusively to the awarded contractor (`v_contractor_id`, type `'proposal_accepted'`). Removed inaccurate claims that the stored procedure directly notifies rejected competing contractors.
+     - Documented automatic parent project status transition to `'assigned'` (if all child packages are assigned) or `'partially_assigned'`.
+
+3. **Change Request Governance (`09-sequence-diagrams.md`, `16-api-and-integration-design.md`, `diagrams/sequence-07-change-request.mmd`, `diagrams/activity-change-request.mmd`):**
+   - Calibrated RPC signature to exact parameter names: `decide_change_request(p_request_id, p_decision, p_notes)`.
+   - Documented caller authorization check: caller must be the project owner (`v_owner_id = auth.uid()`) or platform administrator.
+   - Clarified financial and schedule side-effects: upon approval, the procedure automatically updates `project_packages.estimated_budget` (`+ cost_impact`) and `project_packages.target_duration_days` (`+ time_impact`).
+   - Notified user is the original requester (`user_id = v_requested_by`).
+   - Removed erroneous claims that `decide_change_request` writes to `public.audit_logs`. Formally classified this missing audit entry as a documented implementation limitation scheduled for subsequent phase hardening.
+
+4. **Package Handover & Completion Sign-Off (`09-sequence-diagrams.md`, `diagrams/sequence-08-handover-completion.mmd`):**
+   - Removed inaccurate claim that `request_package_handover` writes an audit log; confirmed it transitions status to `pending_handover` and notifies the landowner.
+   - Preserved and confirmed audit logging in `approve_package_completion` (action `'APPROVE_PACKAGE_COMPLETION'` on entity `'project_packages'`).
+   - Documented automatic parent project status transition to `'completed'` when all child packages reach completion.
+
+5. **Storage Security & Object Key Paths (`03-functional-requirements.md`, `05-system-architecture.md`, `08-use-case-model.md`, `09-sequence-diagrams.md`, `17-security-and-authorization-design.md`, `diagrams/sequence-06-milestone-lifecycle.mmd`):**
+   - Corrected object key hierarchy for `progress-photos` bucket to the exact 3-segment structure: `{package_id}/{milestone_id}/{file_name}`.
+   - Documented the exact storage RLS authorization mechanism: the policy parses `(storage.foldername(name))[1]` and validates access at the **package level** against assigned contractor and project landowner, rather than milestone-specific record ownership.
+
+6. **Comprehensive Audit Logging Realities Matrix (`04-non-functional-requirements.md`, `16-api-and-integration-design.md`, `17-security-and-authorization-design.md`):**
+   - Replaced generic claims of universal audit logging with the exact reality across all 5 operational RPCs:
+     - `admin_verify_contractor`: Logged (`'ADMIN_VERIFY_CONTRACTOR'`).
+     - `select_contractor_for_package`: Logged (`'SELECT_CONTRACTOR_PROPOSAL'`).
+     - `approve_package_completion`: Logged (`'APPROVE_PACKAGE_COMPLETION'`).
+     - `request_package_handover`: Not logged in migration 03 (Implementation Limitation).
+     - `decide_change_request`: Not logged in migration 03 (Implementation Limitation).
+
+### 10.2 Quality & Regression Assurance
+
+- **Source Code Integrity:** 0 lines of application code (`src/`), database migrations (`supabase/migrations/`), or configuration modified.
+- **Static Analysis:** ESLint check passed with 0 errors and 0 warnings.
+- **Git Flow:** All documentation updates maintained on dedicated branch `docs/system-analysis-design`.

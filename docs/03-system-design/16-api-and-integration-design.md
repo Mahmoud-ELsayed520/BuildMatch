@@ -65,8 +65,9 @@ BuildMatch uses **PostgREST** and **Supabase Client SDK** over **HTTPS / TLS 1.3
 - **Side Effects:**
   - Updates `public.proposals` (winner -> `accepted`, rivals -> `rejected`).
   - Updates `public.project_packages` (status -> `assigned`, `assigned_contractor_id`, `assigned_proposal_id`, `assigned_at`).
-  - Inserts 1 row into `public.audit_logs`.
-  - Inserts notification rows for winning and rejected contractors.
+  - Updates `public.projects` (status -> `assigned` if all packages assigned, else `partially_assigned`).
+  - Inserts 1 row into `public.audit_logs` (action: `'SELECT_CONTRACTOR_PROPOSAL'`, entity: `'project_packages'`).
+  - Inserts notification row for the accepted contractor (`user_id = v_contractor_id`). *(Note: The current database implementation does not dispatch notifications to rejected competing contractors).*
 
 ---
 
@@ -102,7 +103,8 @@ BuildMatch uses **PostgREST** and **Supabase Client SDK** over **HTTPS / TLS 1.3
 - **Side Effects:**
   - Package status updated to `'pending_handover'`.
   - Sets `handover_requested_at = NOW()`.
-  - Writes audit log and dispatches landowner notification.
+  - Dispatches landowner notification (`user_id = v_owner_id`).
+  - *(Note: The current database implementation does not insert an audit log for request_package_handover).*
 
 ---
 
@@ -137,7 +139,8 @@ BuildMatch uses **PostgREST** and **Supabase Client SDK** over **HTTPS / TLS 1.3
 - **Side Effects:**
   - Package status updated to `'completed'`, `completed_at = NOW()`.
   - Checks sibling packages; if all complete, updates parent project to `'completed'`.
-  - Writes audit log and notifies contractor.
+  - Inserts 1 row into `public.audit_logs` (action: `'APPROVE_PACKAGE_COMPLETION'`, entity: `'project_packages'`).
+  - Dispatches notification to assigned contractor (`user_id = v_assigned_contractor`).
 
 ---
 
@@ -145,31 +148,31 @@ BuildMatch uses **PostgREST** and **Supabase Client SDK** over **HTTPS / TLS 1.3
 - **Purpose:** Decides formal scope, cost, or duration Change Requests submitted during execution.
 - **Implementation Status:** Implemented & Verified (Migration 03).
 - **Execution Mode:** `SECURITY DEFINER` (`search_path = public, auth, pg_temp;`).
-- **Caller:** Landowner (if contractor requested) or Contractor (if owner requested) via `executionService.decideChangeRequest()`.
+- **Caller:** Landowner (Project Owner) via `executionService.decideChangeRequest()`.
 - **Input Parameters:**
   ```json
   {
-    "p_change_request_id": "UUID (Required)",
+    "p_request_id": "UUID (Required)",
     "p_decision": "TEXT ('approved' | 'rejected')",
-    "p_notes": "TEXT (Optional reason)"
+    "p_notes": "TEXT (Optional reason, default NULL)"
   }
   ```
 - **Output Return Payload:**
   ```json
   {
     "success": true,
-    "change_request_id": "UUID",
-    "status": "approved | rejected",
-    "decided_at": "ISO-8601 Timestamp"
+    "status": "approved | rejected"
   }
   ```
 - **Authorization & Guards:**
-  - Caller must be the counterpart party to `requested_by` on the package.
+  - Caller must be project owner (`p.owner_id = auth.uid()` or admin).
   - Decision must be `'approved'` or `'rejected'`.
   - Request status must be `'submitted'`.
 - **Side Effects:**
-  - Updates `change_requests` record with decision, timestamp, and notes.
-  - Writes audit log and notifies requesting party.
+  - Updates `change_requests` record with decision (`p_decision`), `decision_by = auth.uid()`, `decision_notes`, and `decided_at = NOW()`.
+  - If approved: Updates `public.project_packages` adjusting `estimated_budget = COALESCE(estimated_budget, 0) + cost_impact` and `target_duration_days = COALESCE(target_duration_days, 0) + time_impact_days`.
+  - Dispatches notification to requesting user (`user_id = v_requested_by`).
+  - *(Note: The current database implementation does not insert an audit log for decide_change_request).*
 
 ---
 

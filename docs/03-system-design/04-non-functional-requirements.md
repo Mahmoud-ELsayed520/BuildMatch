@@ -139,13 +139,13 @@ The non-functional requirements for BuildMatch are organized according to the **
 ## 8. Auditability & Observability (AUD)
 
 ### NFR-AUD-001: Immutable Audit Trail for Critical Business Events
-- **Description:** The system must record tamper-proof audit log entries in `public.audit_logs` for all state-changing operational events:
-  - Contractor verification approval/rejection.
-  - Contractor selection and proposal acceptance.
-  - Handover requests and completion sign-offs.
-  - Change request approvals and rejections.
-- **Target Metric:** 100% capture rate for defined critical business events.
-- **Verification Evidence:** Verified via transactional RPCs in migration 03 recording audit rows with actor ID, entity ID, action name, JSON metadata, and timestamps. RLS prevents client modification.
+- **Description:** The system must record tamper-proof audit log entries in `public.audit_logs` for critical state-changing operational events. In the current migration baseline (`20261116000003_functions_and_rpc.sql`), transactional audit logging is implemented in three key RPCs:
+  - Contractor verification approval/rejection (`admin_verify_contractor`: action `'ADMIN_VERIFY_CONTRACTOR'`).
+  - Contractor selection and proposal acceptance (`select_contractor_for_package`: action `'SELECT_CONTRACTOR_PROPOSAL'`).
+  - Package completion sign-off (`approve_package_completion`: action `'APPROVE_PACKAGE_COMPLETION'`).
+  *(Note on Implementation Limitations: `request_package_handover` and `decide_change_request` currently transition status and dispatch notifications without writing to `audit_logs`. Full audit coverage across all operational lifecycle events is scheduled for subsequent phase hardening).*
+- **Target Metric:** 100% capture rate for currently instrumented RPC business events.
+- **Verification Evidence:** Verified via transactional RPCs in migration 03 recording audit rows with actor ID, entity ID, action name, JSON metadata, and timestamps. RLS prevents client modification (`SELECT` for admin, no `INSERT`/`UPDATE`/`DELETE` for non-service roles).
 
 ---
 

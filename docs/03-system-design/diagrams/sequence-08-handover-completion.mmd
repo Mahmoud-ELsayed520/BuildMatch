@@ -13,11 +13,12 @@ sequenceDiagram
   Contractor->>UI: Clicks "Request Package Handover"
   UI->>ExecSvc: requestPackageHandover(packageId)
   ExecSvc->>RPC_H: request_package_handover(p_package_id)
-  RPC_H->>DB: Verify all milestones have status='approved'
-  RPC_H->>DB: UPDATE project_packages SET status='pending_handover', handover_requested_at=NOW()
-  RPC_H->>DB: INSERT INTO audit_logs (action='handover_requested', ...)
-  RPC_H->>DB: INSERT INTO notifications (owner_id, "Contractor requested final handover inspection")
-  RPC_H-->>ExecSvc: Success JSON
+  Note over RPC_H: Verifies caller is assigned contractor (assigned_contractor_id = auth.uid())
+  RPC_H->>DB: SELECT COUNT(*) FROM milestones WHERE package_id=p_package_id AND status <> 'approved'
+  RPC_H->>DB: UPDATE project_packages SET status='pending_handover', handover_requested_at=NOW() WHERE id=p_package_id
+  Note over RPC_H: Note: No audit_log inserted in request_package_handover
+  RPC_H->>DB: INSERT INTO notifications (user_id=v_owner_id, title='طلب استلام حزمة عمل', type='handover_requested')
+  RPC_H-->>ExecSvc: Return Success JSON { success: true, status: 'pending_handover' }
   ExecSvc-->>UI: Package transitioned to 'pending_handover'
   UI-->>Contractor: "Handover request sent to landowner"
 
@@ -26,10 +27,11 @@ sequenceDiagram
   Landowner->>UI: Clicks "Confirm & Approve Package Completion"
   UI->>ExecSvc: approvePackageCompletion(packageId)
   ExecSvc->>RPC_C: approve_package_completion(p_package_id)
-  RPC_C->>DB: UPDATE project_packages SET status='completed', completed_at=NOW()
-  RPC_C->>DB: Check parent project package statuses; update project if all complete
-  RPC_C->>DB: INSERT INTO audit_logs (action='package_completed', ...)
-  RPC_C->>DB: INSERT INTO notifications (contractor_id, "Package marked completed! Review unlocked.")
-  RPC_C-->>ExecSvc: Success JSON
+  Note over RPC_C: Verifies caller is landowner (p.owner_id = auth.uid()) and status is 'pending_handover'
+  RPC_C->>DB: UPDATE project_packages SET status='completed', completed_at=NOW() WHERE id=p_package_id
+  RPC_C->>DB: Check sibling packages; if all completed, UPDATE projects SET status='completed' WHERE id=v_project_id
+  RPC_C->>DB: INSERT INTO audit_logs (action='APPROVE_PACKAGE_COMPLETION', entity_type='project_packages', entity_id=p_package_id, details={project_id, all_completed})
+  RPC_C->>DB: INSERT INTO notifications (user_id=v_assigned_contractor, title='تم اعتماد اكتمال حزمة العمل بنجاح', type='package_completed')
+  RPC_C-->>ExecSvc: Return Success JSON { success: true, status: 'completed' }
   ExecSvc-->>UI: Package status updated to 'completed'
   UI-->>Landowner: "Package completed! You can now write a review."

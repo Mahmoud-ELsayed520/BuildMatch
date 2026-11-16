@@ -203,13 +203,15 @@ graph TD
   InspectCR --> DecideCR{Counterpart Decision}
 
   DecideCR -- Approve --> CallApproveRPC[Execute decide_change_request status: approved]
-  CallApproveRPC --> CommitApproval[Update change_requests -> approved & Record Audit Log]
-  CommitApproval --> ApplyChanges[Adjust Package Financial Baseline & Schedule]
-  ApplyChanges --> EndApproved([Change Formally Integrated into Project])
+  CallApproveRPC --> CommitApproval[Update change_requests -> approved with Decision Notes]
+  CommitApproval --> ApplyChanges[Adjust Package Financial Baseline & Schedule in project_packages]
+  ApplyChanges --> NotifyRequester[Dispatch Notification to Requester]
+  NotifyRequester --> EndApproved([Change Formally Integrated into Project])
 
   DecideCR -- Reject --> CallRejectRPC[Execute decide_change_request status: rejected]
-  CallRejectRPC --> CommitRejection[Update change_requests -> rejected & Record Notes]
-  CommitRejection --> EndRejected([Change Discarded: Original Contract Prevails])
+  CallRejectRPC --> CommitRejection[Update change_requests -> rejected with Rejection Notes]
+  CommitRejection --> NotifyReject[Dispatch Notification to Requester]
+  NotifyReject --> EndRejected([Change Discarded: Original Contract Prevails])
 ```
 
 *(Source file preserved in `diagrams/activity-change-request.mmd`)*

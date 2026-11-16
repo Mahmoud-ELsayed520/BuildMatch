@@ -228,7 +228,7 @@ graph LR
 - **Trigger:** Contractor clicks "Log Progress Update" on the current active milestone.
 - **Main Flow:**
   1. Contractor enters percentage of completion (e.g., 75%), technical notes, and selects on-site photos.
-  2. System uploads photos to `progress-photos` storage bucket at path `{milestone_id}/{file_name}`.
+  2. System uploads photos to `progress-photos` storage bucket at path `{package_id}/{milestone_id}/{file_name}`.
   3. System records update entry in `public.progress_updates` with photo URLs JSONB.
   4. If percentage equals 100%, contractor submits milestone for formal review, transitioning status to `submitted_for_review`.
   5. Landowner receives notification that milestone is ready for inspection.
@@ -266,8 +266,8 @@ graph LR
   2. System creates record in `public.change_requests` with status `submitted`.
   3. Landowner receives alert to review Change Request.
   4. Landowner opens request details and reviews cost and timeline impact.
-  5. Landowner executes `decide_change_request(p_change_request_id, p_decision, p_notes)` RPC with decision `'approved'` or `'rejected'`.
-  6. Database updates request status, logs decision notes, and writes to `audit_logs`.
+  5. Landowner executes `decide_change_request(p_request_id, p_decision, p_notes)` RPC with decision `'approved'` or `'rejected'`.
+  6. Database updates request status, adjusts package `estimated_budget` and `target_duration_days` if approved, and dispatches a notification to the requester (`v_requested_by`). *(Note: `decide_change_request` does not write to `audit_logs` in migration 03; audit coverage for change requests is scheduled for subsequent phase hardening).*
 - **Postconditions:** Formal scope and financial modification auditably approved or rejected before work begins.
 - **Related Requirements:** FR-EXEC-004, FR-EXEC-005.
 

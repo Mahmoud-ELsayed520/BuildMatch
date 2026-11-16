@@ -152,7 +152,11 @@ In migration `20261116000004_storage_buckets.sql`, all three storage buckets are
 | :--- | :--- | :--- | :--- |
 | **`project-files`** | `{project_id}/{file_name}` | Project owner, assigned contractor on active package, or authenticated user if `is_public = true` on open project. | Project owner only (`p.owner_id = auth.uid()`). |
 | **`verification-docs`** | `{contractor_id}/{file_name}` | Uploading contractor (`contractor_id = auth.uid()`) or admin (`is_admin()`). | Uploading contractor only. |
-| **`progress-photos`** | `{milestone_id}/{file_name}` | Project owner, assigned contractor, or admin. | Assigned contractor on that milestone only. |
+| **`progress-photos`** | `{package_id}/{milestone_id}/{file_name}` | Project owner, assigned contractor on package, or admin. | Assigned contractor on that package only (`pkg.assigned_contractor_id = auth.uid()`). |
+
+> [!NOTE]
+> **Storage Authorization Scope:**
+> The `progress_photos_storage_select` and `progress_photos_storage_insert` policies evaluate access using `(storage.foldername(name))[1]`, which corresponds to `package_id`. Authorization is therefore enforced at the **package assignment level** (ensuring the contractor is assigned to that package and the landowner owns that package's project), rather than checking milestone-level ownership directly.
 
 ---
 
@@ -198,6 +202,19 @@ CREATE POLICY "audit_logs_insert_policy"
 ```
 - Direct client-side `INSERT`, `UPDATE`, or `DELETE` operations on `audit_logs` are completely denied by RLS.
 - Audit rows can only be written by trusted `SECURITY DEFINER` procedures executing on behalf of authenticated business operations.
+
+### 6.1 RPC Audit Logging Verification & Implementation Limitations
+An audit of the five procedural RPCs in `20261116000003_functions_and_rpc.sql` documents their exact current audit behavior:
+
+| Stored Procedure (RPC) | Current Audit Behavior | Implemented Audit Action | Entity Type |
+| :--- | :--- | :--- | :--- |
+| `select_contractor_for_package` | **Audit Log Implemented** | `'SELECT_CONTRACTOR_PROPOSAL'` | `'project_packages'` |
+| `approve_package_completion` | **Audit Log Implemented** | `'APPROVE_PACKAGE_COMPLETION'` | `'project_packages'` |
+| `admin_verify_contractor` | **Audit Log Implemented** | `'ADMIN_VERIFY_CONTRACTOR'` | `'contractor_profiles'` |
+| `request_package_handover` | **No Audit Log Currently Exists** | N/A (Implementation limitation) | N/A |
+| `decide_change_request` | **No Audit Log Currently Exists** | N/A (Implementation limitation) | N/A |
+
+*Note: In accordance with project non-negotiable rules, the database migrations remain unchanged. The absence of audit log inserts in `request_package_handover` and `decide_change_request` is explicitly noted as a database implementation limitation.*
 
 ---
 

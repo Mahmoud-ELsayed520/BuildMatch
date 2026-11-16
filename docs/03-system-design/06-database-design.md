@@ -88,7 +88,7 @@ erDiagram
     uuid id PK,FK
     text business_name
     text bio
-    text_arr specializations
+    text[] specializations
     int years_of_experience
     text verification_status
     text verification_notes

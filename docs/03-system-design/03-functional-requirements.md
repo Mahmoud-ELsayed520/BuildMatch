@@ -249,7 +249,7 @@ BuildMatch defines its functional requirements following IEEE 830-1998 standards
 - **Description:** The system shall allow the assigned contractor to log milestone progress updates, submit percentage of completion (0-100%), enter technical notes, and upload mandatory on-site progress photos into the secure `progress-photos` storage bucket.
 - **Primary Actor:** Assigned Contractor
 - **Preconditions:** Contractor is assigned to the package; milestone status is `pending` or `in_progress`.
-- **Expected Outcome:** Photos stored at path `{milestone_id}/{file_name}` in `progress-photos` bucket; progress log created in `public.progress_updates`; milestone transitions to `submitted_for_review` when completion reaches 100%.
+- **Expected Outcome:** Photos stored at path `{package_id}/{milestone_id}/{file_name}` in `progress-photos` bucket; progress log created in `public.progress_updates`; milestone transitions to `submitted_for_review` when completion reaches 100%.
 - **Priority:** High (P1)
 - **Implementation Status:** Implemented & Verified (Storage policy `progress_photos_storage_insert` enforces assigned contractor access; service in `executionService.js`).
 
@@ -314,7 +314,12 @@ BuildMatch defines its functional requirements following IEEE 830-1998 standards
 - **Implementation Status:** Implemented & Verified (Table `reports` with RLS policies in migrations 01 & 02).
 
 ### FR-ADMIN-003: Immutable Security & Business Audit Logging
-- **Description:** The system shall record immutable audit logs for all security and business-critical operations (contractor verification, package assignment, handover completion, change request decisions) recording actor ID, action name, entity type, entity ID, JSON details, and client IP. Audit logs can be read only by administrators and cannot be updated or deleted by any client.
+- **Description:** The system shall record immutable audit logs for security and business-critical operations. In migration `20261116000003_functions_and_rpc.sql`, transactional audit logging is implemented in three key stored procedures:
+  - Contractor verification (`admin_verify_contractor`: action `'ADMIN_VERIFY_CONTRACTOR'`).
+  - Package proposal acceptance (`select_contractor_for_package`: action `'SELECT_CONTRACTOR_PROPOSAL'`).
+  - Package completion sign-off (`approve_package_completion`: action `'APPROVE_PACKAGE_COMPLETION'`).
+  *(Note on Implementation Limitations: `request_package_handover` and `decide_change_request` currently transition status and dispatch notifications without writing to `audit_logs`. Full audit coverage across all operational lifecycle events is scheduled for subsequent phase hardening).*
+  Audit logs record actor ID, action name, entity type, entity ID, JSON details, and client IP. Audit logs can be read only by administrators and cannot be updated or deleted by any client.
 - **Primary Actor:** System (Automated via RPCs) / Administrator (Read-only)
 - **Preconditions:** Security-critical operation occurs.
 - **Expected Outcome:** Immutable log created in `public.audit_logs`. Direct client inserts, updates, or deletes are strictly denied by RLS.

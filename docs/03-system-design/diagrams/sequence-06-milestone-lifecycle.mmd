@@ -10,7 +10,7 @@ sequenceDiagram
   Contractor->>UI: Logs Milestone Progress (Percentage: 100%, Notes)
   Contractor->>UI: Attaches Site Photos (JPEG/PNG)
   UI->>ExecSvc: logProgress(milestoneId, { notes, percentage: 100, files })
-  ExecSvc->>StorageAPI: upload to 'progress-photos' ({milestone_id}/{filename})
+  ExecSvc->>StorageAPI: upload to 'progress-photos' ({package_id}/{milestone_id}/{filename})
   StorageAPI-->>ExecSvc: Upload URLs returned
   ExecSvc->>DB: INSERT INTO progress_updates (milestone_id, contractor_id, percentage_completed, photos)
   ExecSvc->>DB: UPDATE milestones SET status='submitted_for_review', submitted_at=NOW()

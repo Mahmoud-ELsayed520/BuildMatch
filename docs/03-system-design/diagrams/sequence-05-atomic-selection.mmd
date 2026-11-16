@@ -16,21 +16,24 @@ sequenceDiagram
   PropSvc->>RPC: select_contractor_for_package(p_package_id, p_proposal_id)
 
   Note over RPC: BEGIN TRANSACTION
-  RPC->>DB: SELECT status, owner_id FROM project_packages WHERE id=p_package_id FOR UPDATE OF pkg;
-  Note over RPC,DB: Row-level Mutex Lock Acquired on Package
+  RPC->>DB: SELECT p.id, p.owner_id, pkg.status FROM project_packages pkg JOIN projects p ON p.id=pkg.project_id WHERE pkg.id=p_package_id FOR UPDATE OF pkg;
+  Note over RPC,DB: Row-level Mutex Lock Acquired on Work Package
+
+  RPC->>DB: SELECT contractor_id, status FROM proposals WHERE id=p_proposal_id AND package_id=p_package_id FOR UPDATE;
+  Note over RPC,DB: Row-level Lock Acquired on Target Proposal
 
   RPC->>DB: Verify caller is owner_id AND package.status IN ('open', 'under_review')
-  RPC->>DB: Verify contractor is approved
+  RPC->>DB: Verify contractor is approved (verification_status = 'approved')
 
   alt Valid Proposal & Open Package
-    RPC->>DB: UPDATE proposals SET status='accepted', decision_at=NOW() WHERE id=p_proposal_id
-    RPC->>DB: UPDATE proposals SET status='rejected', decision_reason='Another contractor selected' WHERE package_id=p_package_id AND id <> p_proposal_id AND status='submitted'
-    RPC->>DB: UPDATE project_packages SET status='assigned', assigned_contractor_id=v_contractor_id, assigned_proposal_id=p_proposal_id, assigned_at=NOW()
-    RPC->>DB: INSERT INTO audit_logs (action='contractor_selected', entity_type='project_package', ...)
-    RPC->>DB: INSERT INTO notifications (Contractor 1: "Proposal Accepted")
-    RPC->>DB: INSERT INTO notifications (Contractor 2: "Proposal Rejected")
+    RPC->>DB: UPDATE proposals SET status='accepted', decision_at=NOW(), decision_reason='Selected by project owner' WHERE id=p_proposal_id
+    RPC->>DB: UPDATE proposals SET status='rejected', decision_at=NOW(), decision_reason='Another contractor was selected for this package' WHERE package_id=p_package_id AND id <> p_proposal_id AND status='submitted'
+    RPC->>DB: UPDATE project_packages SET status='assigned', assigned_contractor_id=v_contractor_id, assigned_proposal_id=p_proposal_id, assigned_at=NOW() WHERE id=p_package_id
+    RPC->>DB: UPDATE projects SET status = CASE WHEN all_assigned THEN 'assigned' ELSE 'partially_assigned' END WHERE id=v_project_id
+    RPC->>DB: INSERT INTO audit_logs (action='SELECT_CONTRACTOR_PROPOSAL', entity_type='project_packages', entity_id=p_package_id, details={proposal_id, contractor_id, project_id})
+    RPC->>DB: INSERT INTO notifications (user_id=v_contractor_id, title='مبروك! تم قبول عرضك', type='proposal_accepted')
     Note over RPC: COMMIT TRANSACTION
-    RPC-->>PropSvc: Return Success JSON { package_id, status: 'assigned' }
+    RPC-->>PropSvc: Return Success JSON { package_id, proposal_id, assigned_contractor_id }
     PropSvc-->>UI: Selection Successful
     UI-->>Landowner: Display Success Modal & Transition to Execution Dashboard
   else Package already assigned or concurrency race
