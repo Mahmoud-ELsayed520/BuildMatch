@@ -42,4 +42,5 @@ coverage/
 
 # Local PostgreSQL
 .pgdata/
+.pgdata_test/
 *.log
