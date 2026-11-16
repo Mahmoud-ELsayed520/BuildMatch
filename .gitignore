@@ -39,3 +39,7 @@ supabase/.temp/
 # Testing / Coverage
 coverage/
 *.lcov
+
+# Local PostgreSQL
+.pgdata/
+*.log
