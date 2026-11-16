@@ -1,0 +1,51 @@
+graph TD
+  subgraph Entities["External Entities"]
+    CO["Verified Contractor"]
+    LO["Landowner (Project Owner)"]
+  end
+
+  subgraph Subprocesses["Process 4.0 Subprocesses"]
+    P41(("4.1 Verify Contractor\nApproval Eligibility"))
+    P42(("4.2 Validate & Record\nStructured BOQ Proposal"))
+    P43(("4.3 Aggregate Proposals\nfor Comparison Matrix"))
+    P44(("4.4 Execute Atomic\nContractor Selection RPC"))
+    P45(("4.5 Dispatch Notifications\n& Rejection Reasons"))
+  end
+
+  subgraph Stores["Data Stores"]
+    D2[("D2: contractor_profiles")]
+    D3[("D3: project_packages")]
+    D4[("D4: proposals &\nproposal_items")]
+    D6[("D6: notifications &\naudit_logs")]
+  end
+
+  %% Flow 1: Eligibility check
+  CO -- "1. Submit Proposal Intent" --> P41
+  P41 -- "Query verification_status" --> D2
+  D2 -- "Return status = approved" --> P41
+
+  %% Flow 2: Proposal validation
+  P41 -- "Eligible Contractor Token" --> P42
+  CO -- "2. Total Price, Terms, BOQ Items" --> P42
+  P42 -- "Write proposal row (submitted)" --> D4
+  P42 -- "Write BOQ line items" --> D4
+
+  %% Flow 3: Landowner Comparison
+  LO -- "3. Request Package Proposals" --> P43
+  P43 -- "Query submitted proposals" --> D4
+  P43 -- "Query package scope" --> D3
+  P43 -- "Return Comparison Matrix" --> LO
+
+  %% Flow 4: Atomic Selection RPC
+  LO -- "4. Award Proposal (package_id, proposal_id)" --> P44
+  P44 -- "Lock package row FOR UPDATE" --> D3
+  P44 -- "Update package: assigned, assigned_contractor_id" --> D3
+  P44 -- "Update chosen proposal: accepted" --> D4
+  P44 -- "Update competing proposals: rejected" --> D4
+
+  %% Flow 5: Audit & Notifications
+  P44 -- "Selection Transaction Completed" --> P45
+  P45 -- "Insert acceptance notification to winner" --> D6
+  P45 -- "Insert rejection notifications to rivals" --> D6
+  P45 -- "Insert immutable audit log" --> D6
+  P45 -- "Display Success Confirmation" --> LO

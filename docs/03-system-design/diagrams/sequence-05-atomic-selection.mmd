@@ -1,0 +1,41 @@
+sequenceDiagram
+  autonumber
+  actor Landowner as Landowner
+  participant UI as React Presentation Layer
+  participant PropSvc as proposalService.js
+  participant RPC as select_contractor_for_package RPC
+  participant DB as PostgreSQL Database
+
+  Landowner->>UI: Views Side-by-Side Proposal Comparison Matrix
+  UI-->>Landowner: Displays Proposal A (Contractor 1) vs Proposal B (Contractor 2)
+  Landowner->>UI: Clicks "Accept Proposal A"
+  UI->>Landowner: Prompts Confirmation Modal
+  Landowner->>UI: Confirms Selection
+
+  UI->>PropSvc: selectProposal(packageId, proposalA_Id)
+  PropSvc->>RPC: select_contractor_for_package(p_package_id, p_proposal_id)
+
+  Note over RPC: BEGIN TRANSACTION
+  RPC->>DB: SELECT status, owner_id FROM project_packages WHERE id=p_package_id FOR UPDATE OF pkg;
+  Note over RPC,DB: Row-level Mutex Lock Acquired on Package
+
+  RPC->>DB: Verify caller is owner_id AND package.status IN ('open', 'under_review')
+  RPC->>DB: Verify contractor is approved
+
+  alt Valid Proposal & Open Package
+    RPC->>DB: UPDATE proposals SET status='accepted', decision_at=NOW() WHERE id=p_proposal_id
+    RPC->>DB: UPDATE proposals SET status='rejected', decision_reason='Another contractor selected' WHERE package_id=p_package_id AND id <> p_proposal_id AND status='submitted'
+    RPC->>DB: UPDATE project_packages SET status='assigned', assigned_contractor_id=v_contractor_id, assigned_proposal_id=p_proposal_id, assigned_at=NOW()
+    RPC->>DB: INSERT INTO audit_logs (action='contractor_selected', entity_type='project_package', ...)
+    RPC->>DB: INSERT INTO notifications (Contractor 1: "Proposal Accepted")
+    RPC->>DB: INSERT INTO notifications (Contractor 2: "Proposal Rejected")
+    Note over RPC: COMMIT TRANSACTION
+    RPC-->>PropSvc: Return Success JSON { package_id, status: 'assigned' }
+    PropSvc-->>UI: Selection Successful
+    UI-->>Landowner: Display Success Modal & Transition to Execution Dashboard
+  else Package already assigned or concurrency race
+    Note over RPC: ROLLBACK TRANSACTION
+    RPC-->>PropSvc: RAISE EXCEPTION: 'Package is not currently open for selection'
+    PropSvc-->>UI: Error: Selection failed
+    UI-->>Landowner: "Package was already awarded or state changed"
+  end

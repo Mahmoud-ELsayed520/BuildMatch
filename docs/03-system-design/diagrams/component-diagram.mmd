@@ -1,0 +1,72 @@
+graph TB
+  subgraph Client_App["BuildMatch Single Page Application (React 18 / Vite 5)"]
+    direction TB
+
+    subgraph UI_Shared["Shared UI Components (src/components/common)"]
+      UI_Base["[Button, Card, Input, Badge, Spinner, Modal]"]
+      UI_Layout["[Navbar, Sidebar, Footer, ErrorBoundary]"]
+    end
+
+    subgraph State_Context["Application Contexts (src/context)"]
+      Ctx_Auth["AuthContext\n(Session, User, Role)"]
+      Ctx_Notif["NotificationContext\n(In-App Alerts)"]
+    end
+
+    subgraph Feature_Modules["Feature Modules (src/features)"]
+      Feat_Auth["Auth Feature\n(Login, Register, ProtectedRoute)"]
+      Feat_Owner["Landowner Feature\n(CreateProject, ProposalComparison)"]
+      Feat_Contractor["Contractor Feature\n(Discovery, Profile, ProposalBuilder)"]
+      Feat_Execution["Execution Feature\n(MilestoneTracker, ChangeRequests, Handover)"]
+      Feat_Admin["Admin Feature\n(KYCReview, AuditLogs, Reports)"]
+    end
+
+    subgraph Service_Layer["Service Abstraction Layer (src/services)"]
+      Svc_Auth["authService.js"]
+      Svc_Proj["projectService.js"]
+      Svc_Pkg["packageService.js"]
+      Svc_Prop["proposalService.js"]
+      Svc_Exec["executionService.js"]
+      Svc_Admin["adminService.js"]
+      Svc_Storage["storageService.js"]
+      Svc_Client["client.js\n(Supabase Client SDK)"]
+    end
+  end
+
+  subgraph Cloud_Backend["Backend Infrastructure (Supabase Managed Cloud / Local PostgreSQL)"]
+    direction TB
+    subgraph Gateway_Tier["Ingress & Gateway Tier"]
+      BaaS_Auth["Supabase Auth (GoTrue)\nJWT RS256/HS256 Tokens"]
+      BaaS_PostgREST["PostgREST REST/RPC Gateway"]
+      BaaS_Storage["Storage API (S3 Engine)"]
+    end
+
+    subgraph Engine_Tier["Security & Execution Engine"]
+      DB_RLS["PostgreSQL RLS Engine\n(100% Policy Enforcement)"]
+      DB_RPC["Stored Procedures (SECURITY DEFINER)\n(select_contractor, decide_change, admin_verify)"]
+      Storage_Policies["Storage Object RLS Policies"]
+    end
+
+    subgraph Data_Tier["Persistence Tier (PostgreSQL 15+)"]
+      DB_Tables["15 Normalized Application Tables"]
+      DB_Buckets["3 Storage Buckets\n(project-files, verification-docs, progress-photos)"]
+    end
+  end
+
+  %% Client Internal Dependencies
+  Feature_Modules --> UI_Shared
+  Feature_Modules --> State_Context
+  Feature_Modules --> Service_Layer
+  Service_Layer --> Svc_Client
+
+  %% Trust Boundary / Network Call
+  Svc_Client == "HTTPS / TLS 1.3 (Bearer JWT)" ==> Gateway_Tier
+
+  %% Backend Internal Wiring
+  BaaS_Auth -. "Sets auth.uid() & auth.role()" .-> BaaS_PostgREST
+  BaaS_PostgREST --> DB_RLS
+  BaaS_PostgREST --> DB_RPC
+  BaaS_Storage --> Storage_Policies
+
+  DB_RLS --> DB_Tables
+  DB_RPC --> DB_Tables
+  Storage_Policies --> DB_Buckets

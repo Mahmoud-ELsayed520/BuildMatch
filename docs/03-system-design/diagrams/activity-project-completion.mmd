@@ -1,0 +1,25 @@
+graph TD
+  Start([Start: All Sequential Milestones Approved]) --> ContractorHandover[Contractor Calls request_package_handover RPC]
+  ContractorHandover --> VerifyMilestones{All Milestones Approved?}
+
+  VerifyMilestones -- No --> BlockHandover[Raise Exception: Unapproved Milestones Remain]
+  BlockHandover --> EndBlocked([Handover Blocked])
+
+  VerifyMilestones -- Yes --> SetPendingHandover[Package status -> pending_handover]
+  SetPendingHandover --> NotifyOwner[Notify Landowner to Conduct Final Site Inspection]
+
+  NotifyOwner --> PhysicalWalkthrough[Landowner Conducts On-Site Walkthrough & Punch List Review]
+  PhysicalWalkthrough --> DecisionCompletion{Deliverables Acceptable?}
+
+  DecisionCompletion -- No --> RequestPunchlist[Submit Deficiency Items to Contractor]
+  RequestPunchlist --> ContractorHandover
+
+  DecisionCompletion -- Yes --> CallApproveCompletion[Landowner Calls approve_package_completion RPC]
+  CallApproveCompletion --> SetCompleted[Package status -> completed, completed_at = NOW]
+  SetCompleted --> AuditAndNotify[Log Audit Entry & Unlock Verified Review Capability]
+  AuditAndNotify --> WriteReviewOpt{Landowner Submits Review?}
+
+  WriteReviewOpt -- Yes --> InsertReview[Create Record in reviews with 1-5 Star Ratings]
+  InsertReview --> EndComplete([End: Package Closed & Reputation Updated])
+
+  WriteReviewOpt -- No --> EndComplete

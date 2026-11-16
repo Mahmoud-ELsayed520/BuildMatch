@@ -1,0 +1,16 @@
+stateDiagram-v2
+  [*] --> draft : Contractor drafts bid
+
+  draft --> submitted : Contractor submits proposal (BOQ itemized)
+  draft --> closed : Contractor deletes draft
+
+  submitted --> withdrawn : Contractor withdraws proposal before selection
+  submitted --> accepted : select_contractor_for_package RPC awards this proposal
+  submitted --> rejected : select_contractor_for_package RPC awards competing proposal
+
+  withdrawn --> submitted : Contractor resubmits revised proposal
+
+  accepted --> closed : Package completed / contract finalized
+  rejected --> closed : Archive bid
+
+  closed --> [*]

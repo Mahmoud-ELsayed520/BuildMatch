@@ -1,0 +1,36 @@
+sequenceDiagram
+  autonumber
+  actor Contractor as Assigned Contractor
+  actor Landowner as Landowner
+  participant UI as React Presentation Layer
+  participant ExecSvc as executionService.js
+  participant StorageAPI as Supabase Storage Engine
+  participant DB as PostgreSQL Database
+
+  Contractor->>UI: Logs Milestone Progress (Percentage: 100%, Notes)
+  Contractor->>UI: Attaches Site Photos (JPEG/PNG)
+  UI->>ExecSvc: logProgress(milestoneId, { notes, percentage: 100, files })
+  ExecSvc->>StorageAPI: upload to 'progress-photos' ({milestone_id}/{filename})
+  StorageAPI-->>ExecSvc: Upload URLs returned
+  ExecSvc->>DB: INSERT INTO progress_updates (milestone_id, contractor_id, percentage_completed, photos)
+  ExecSvc->>DB: UPDATE milestones SET status='submitted_for_review', submitted_at=NOW()
+  ExecSvc->>DB: INSERT INTO notifications (owner_id, "Milestone ready for review")
+  DB-->>UI: Milestone Updated
+  UI-->>Contractor: "Milestone submitted for review"
+
+  Landowner->>UI: Opens Execution Workspace & Inspects Photos
+  alt Landowner Approves Deliverable
+    Landowner->>UI: Clicks "Approve Milestone"
+    UI->>ExecSvc: approveMilestone(milestoneId)
+    ExecSvc->>DB: UPDATE milestones SET status='approved', approved_at=NOW()
+    ExecSvc->>DB: INSERT INTO notifications (contractor_id, "Milestone Approved - Payment Authorized")
+    DB-->>UI: Status updated to 'approved'
+    UI-->>Landowner: "Milestone approved successfully"
+  else Landowner Requests Corrective Rework
+    Landowner->>UI: Enters Defect Notes & Clicks "Request Rework"
+    UI->>ExecSvc: requestRework(milestoneId, notes)
+    ExecSvc->>DB: UPDATE milestones SET status='rework_required', rework_notes=notes
+    ExecSvc->>DB: INSERT INTO notifications (contractor_id, "Rework Required on Milestone")
+    DB-->>UI: Status updated to 'rework_required'
+    UI-->>Landowner: "Rework instructions sent to contractor"
+  end

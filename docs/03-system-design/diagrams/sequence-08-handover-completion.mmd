@@ -1,0 +1,35 @@
+sequenceDiagram
+  autonumber
+  actor Contractor as Assigned Contractor
+  actor Landowner as Landowner
+  participant UI as React Presentation Layer
+  participant ExecSvc as executionService.js
+  participant RPC_H as request_package_handover RPC
+  participant RPC_C as approve_package_completion RPC
+  participant DB as PostgreSQL Database
+
+  %% Step 1: Handover Request
+  Note over Contractor,DB: Precondition: All package milestones are in 'approved' status
+  Contractor->>UI: Clicks "Request Package Handover"
+  UI->>ExecSvc: requestPackageHandover(packageId)
+  ExecSvc->>RPC_H: request_package_handover(p_package_id)
+  RPC_H->>DB: Verify all milestones have status='approved'
+  RPC_H->>DB: UPDATE project_packages SET status='pending_handover', handover_requested_at=NOW()
+  RPC_H->>DB: INSERT INTO audit_logs (action='handover_requested', ...)
+  RPC_H->>DB: INSERT INTO notifications (owner_id, "Contractor requested final handover inspection")
+  RPC_H-->>ExecSvc: Success JSON
+  ExecSvc-->>UI: Package transitioned to 'pending_handover'
+  UI-->>Contractor: "Handover request sent to landowner"
+
+  %% Step 2: Final Completion Approval
+  Landowner->>UI: Completes on-site physical walk-through
+  Landowner->>UI: Clicks "Confirm & Approve Package Completion"
+  UI->>ExecSvc: approvePackageCompletion(packageId)
+  ExecSvc->>RPC_C: approve_package_completion(p_package_id)
+  RPC_C->>DB: UPDATE project_packages SET status='completed', completed_at=NOW()
+  RPC_C->>DB: Check parent project package statuses; update project if all complete
+  RPC_C->>DB: INSERT INTO audit_logs (action='package_completed', ...)
+  RPC_C->>DB: INSERT INTO notifications (contractor_id, "Package marked completed! Review unlocked.")
+  RPC_C-->>ExecSvc: Success JSON
+  ExecSvc-->>UI: Package status updated to 'completed'
+  UI-->>Landowner: "Package completed! You can now write a review."

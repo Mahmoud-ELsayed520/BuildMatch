@@ -1,0 +1,36 @@
+sequenceDiagram
+  autonumber
+  actor Contractor as Assigned Contractor
+  actor Landowner as Landowner
+  participant UI as React Presentation Layer
+  participant ExecSvc as executionService.js
+  participant RPC as decide_change_request RPC
+  participant DB as PostgreSQL Database
+
+  Contractor->>UI: Fills Change Request (Title, Reason, Scope Change, Cost: +50,000 EGP, Time: +7 Days)
+  UI->>ExecSvc: submitChangeRequest(packageId, changeData)
+  ExecSvc->>DB: INSERT INTO change_requests (package_id, requested_by, title, cost_impact, time_impact_days, status: 'submitted')
+  ExecSvc->>DB: INSERT INTO notifications (owner_id, "New Change Request submitted")
+  DB-->>UI: Change Request Submitted
+  UI-->>Contractor: "Change request pending owner decision"
+
+  Landowner->>UI: Reviews Scope & Financial Impact in Dashboard
+  alt Landowner Approves Change
+    Landowner->>UI: Clicks "Approve Change Request"
+    UI->>ExecSvc: decideChangeRequest(changeRequestId, 'approved', 'Approved based on updated drawings')
+    ExecSvc->>RPC: decide_change_request(p_change_request_id, 'approved', notes)
+    RPC->>DB: UPDATE change_requests SET status='approved', decided_at=NOW(), decision_by=auth.uid()
+    RPC->>DB: INSERT INTO audit_logs (action='change_request_approved', entity_type='change_request', ...)
+    RPC->>DB: INSERT INTO notifications (contractor_id, "Change Request Approved")
+    RPC-->>ExecSvc: Success JSON
+    ExecSvc-->>UI: Decision Recorded
+    UI-->>Landowner: "Change request approved"
+  else Landowner Rejects Change
+    Landowner->>UI: Clicks "Reject Change Request" with Reason
+    UI->>ExecSvc: decideChangeRequest(changeRequestId, 'rejected', 'Cost deemed excessive')
+    ExecSvc->>RPC: decide_change_request(p_change_request_id, 'rejected', notes)
+    RPC->>DB: UPDATE change_requests SET status='rejected', decided_at=NOW()
+    RPC-->>ExecSvc: Rejection Recorded
+    ExecSvc-->>UI: Decision Recorded
+    UI-->>Landowner: "Change request rejected"
+  end

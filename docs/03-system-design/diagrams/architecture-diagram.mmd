@@ -1,0 +1,82 @@
+graph TB
+  subgraph Client_Browser["Client Tier (Web Browser)"]
+    direction TB
+    subgraph Presentation_Layer["Presentation & Component Layer (React 18 SPA)"]
+      UI_Components["Base UI Library\n(Button, Card, Input, Badge, Spinner, Modal)"]
+      Layout_Components["Layout Wrappers\n(Navbar, Sidebar, Footer, ErrorBoundary)"]
+    end
+
+    subgraph Feature_Layer["Feature & Application Layer"]
+      Auth_Module["Auth Feature\n(Login, Register, Role Select)"]
+      Landowner_Module["Landowner Feature\n(Project Create, Package Mgmt, Proposal Compare)"]
+      Contractor_Module["Contractor Feature\n(Discovery, Profile KYC, Proposal Builder)"]
+      Execution_Module["Execution Feature\n(Milestone Tracker, Photos, Change Requests, Handover)"]
+      Admin_Module["Admin Feature\n(KYC Review, Moderation, Audit Log Viewer)"]
+    end
+
+    subgraph State_Context_Layer["State & Context Layer"]
+      Auth_Context["AuthContext\n(User, Session, Role, Login/Logout)"]
+      Notif_Context["NotificationContext\n(Alerts, Toasts, Polling)"]
+    end
+
+    subgraph Services_Layer["Service Abstraction & Data Access Layer"]
+      Auth_Service["authService.js"]
+      Proj_Service["projectService.js"]
+      Pkg_Service["packageService.js"]
+      Prop_Service["proposalService.js"]
+      Exec_Service["executionService.js"]
+      Admin_Service["adminService.js"]
+      Storage_Service["storageService.js"]
+      Supa_Client["Supabase Client (client.js)\n(Public Anon Key Only)"]
+    end
+  end
+
+  subgraph Cloud_Infrastructure["Backend Infrastructure Tier (Supabase / PostgreSQL)"]
+    direction TB
+    subgraph Gateway_Auth["Gateway & Auth Service"]
+      GoTrue_Auth["Supabase Auth (GoTrue)\nJWT Token Generation & Role Claims"]
+      PostgREST_API["PostgREST HTTP Gateway\nREST API & RPC Dispatcher"]
+      Storage_API["Supabase Storage API\nS3-compatible Object Engine"]
+    end
+
+    subgraph Security_Engine["Security & Authorization Engine (Database Level)"]
+      RLS_Engine["PostgreSQL Row Level Security (RLS)\n100% Policy Coverage across 15 Tables"]
+      Storage_RLS["Storage Object Policies\nPrivate Multi-Tenant Bucket Isolation"]
+      RPC_Engine["Transactional SECURITY DEFINER RPCs\n(select_contractor, decide_change, admin_verify)"]
+    end
+
+    subgraph Database_Storage["Persistence & Relational Database Layer (PostgreSQL 15+)"]
+      Tables_Auth["auth.users"]
+      Tables_Profiles["profiles\ncontractor_profiles\nverification_documents"]
+      Tables_Marketplace["projects\nproject_files\nproject_packages\nproposals\nproposal_items"]
+      Tables_Execution["milestones\nprogress_updates\nchange_requests\nreviews"]
+      Tables_Governance["notifications\nreports\naudit_logs"]
+      Storage_Buckets["Storage Buckets\n(project-files, verification-docs, progress-photos)"]
+    end
+  end
+
+  %% Client Internal Wiring
+  Feature_Layer --> State_Context_Layer
+  Feature_Layer --> Presentation_Layer
+  Feature_Layer --> Services_Layer
+  Services_Layer --> Supa_Client
+
+  %% Network Ingress
+  Supa_Client -- "HTTPS / TLS 1.3 (Bearer JWT)" --> PostgREST_API
+  Supa_Client -- "HTTPS (Upload / Download)" --> Storage_API
+  Supa_Client -- "Auth Handshake" --> GoTrue_Auth
+
+  %% Backend Internal Processing
+  GoTrue_Auth -. "Sets auth.uid() & auth.role()" .-> PostgREST_API
+  PostgREST_API --> RLS_Engine
+  PostgREST_API --> RPC_Engine
+  Storage_API --> Storage_RLS
+
+  RLS_Engine --> Tables_Profiles
+  RLS_Engine --> Tables_Marketplace
+  RLS_Engine --> Tables_Execution
+  RLS_Engine --> Tables_Governance
+  RPC_Engine --> Tables_Marketplace
+  RPC_Engine --> Tables_Execution
+  RPC_Engine --> Tables_Governance
+  Storage_RLS --> Storage_Buckets

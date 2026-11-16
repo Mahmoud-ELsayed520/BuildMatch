@@ -1,0 +1,25 @@
+graph TD
+  Landowner["Landowner (External Entity)"]
+  Contractor["Contractor (External Entity)"]
+  Admin["Platform Administrator (External Entity)"]
+  Guest["Guest Visitor (External Entity)"]
+
+  System(("0.0 BuildMatch Platform"))
+
+  %% Landowner Flows
+  Landowner -- "1. Registration, Project Specs, Packages, Drawing Files" --> System
+  Landowner -- "2. Review Milestones, Change Decisions, Handover Sign-off, Reviews" --> System
+  System -- "3. Matched Proposals, Execution Photo Alerts, Handover Requests" --> Landowner
+
+  %% Contractor Flows
+  Contractor -- "4. Registration, Commercial KYC Docs, Structured BOQ Proposals" --> System
+  Contractor -- "5. Milestone Progress Logs, Photo Evidence, Change Requests, Handover" --> System
+  System -- "6. KYC Status, Open Work Packages, Package Award Notification, Milestone Approvals" --> Contractor
+
+  %% Admin Flows
+  Admin -- "7. KYC Audit Decisions, Content Moderation, Dispute Resolutions" --> System
+  System -- "8. Pending KYC Queue, System Reports, Immutable Audit Logs" --> Admin
+
+  %% Guest Flows
+  Guest -- "9. Browse Public Contractor Directory, Public Projects" --> System
+  System -- "10. Public Directory Data, Platform Landing Page" --> Guest

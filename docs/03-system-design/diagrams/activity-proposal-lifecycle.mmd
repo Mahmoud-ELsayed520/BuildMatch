@@ -1,0 +1,22 @@
+graph TD
+  Start([Start: Contractor Discovers Open Package]) --> CheckStatus{Contractor Approved?}
+
+  CheckStatus -- No --> BlockBidding[Display KYC Required Alert]
+  BlockBidding --> EndBlocked([Bidding Denied by RLS])
+
+  CheckStatus -- Yes --> CheckExisting{Active Proposal Exists on Package?}
+  CheckExisting -- Yes --> BlockDuplicate[Unique Constraint: Only 1 Active Proposal Allowed]
+  BlockDuplicate --> EndBlocked
+
+  CheckExisting -- No --> AuthorProposal[Itemize BOQ Lines, Total Price, Duration, Payment Terms]
+  AuthorProposal --> SubmitAction[Submit Proposal to Database: status = submitted]
+  SubmitAction --> WaitSelection{Landowner Action}
+
+  WaitSelection -- Contractor Withdraws --> WithdrawProposal[Set status = withdrawn]
+  WithdrawProposal --> EndWithdrawn([Proposal Terminated])
+
+  WaitSelection -- Owner Selects This Proposal --> AcceptAction[Atomic Selection: Set status = accepted]
+  AcceptAction --> EndWon([Proposal Awarded: Execution Engine Started])
+
+  WaitSelection -- Owner Selects Competitor --> RejectAction[Atomic Selection: Set status = rejected]
+  RejectAction --> EndRejected([Proposal Closed])

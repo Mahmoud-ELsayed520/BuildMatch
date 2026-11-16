@@ -1,0 +1,25 @@
+graph TD
+  Start([Start: Landowner Opens Proposal Comparison]) --> InspectBids[Compare Total Cost, Durations, BOQs, Contractor Ratings]
+  InspectBids --> SelectWinner[Click 'Award Package' for Target Proposal]
+  SelectWinner --> ConfirmModal{Confirm Award in Modal?}
+
+  ConfirmModal -- Cancel --> EndCancelled([Selection Aborted])
+
+  ConfirmModal -- Confirm --> DispatchRPC[Call select_contractor_for_package RPC]
+  DispatchRPC --> AcquireLock[PostgreSQL: Lock Package Row FOR UPDATE OF pkg]
+
+  AcquireLock --> VerifyState{Package Open & Caller is Owner?}
+  VerifyState -- No --> RollbackFail[Rollback Transaction: Raise Exception]
+  RollbackFail --> DisplayError[Show Alert: Package not available or unauthorized]
+  DisplayError --> EndCancelled
+
+  VerifyState -- Yes --> VerifyContractor{Contractor Status = approved?}
+  VerifyContractor -- No --> RollbackFail
+
+  VerifyContractor -- Yes --> AtomicUpdates[Execute Atomic Multi-Table Mutation]
+  AtomicUpdates --> StepA[Update Chosen Proposal -> accepted]
+  StepA --> StepB[Update Competing Proposals -> rejected]
+  StepB --> StepC[Update Package -> assigned & set assigned_contractor_id]
+  StepC --> StepD[Insert Audit Log & Dispatch Notifications]
+  StepD --> CommitTx[Commit PostgreSQL Transaction]
+  CommitTx --> EndSuccess([End: Contractor Assigned & Execution Workspace Enabled])

@@ -1,0 +1,50 @@
+graph TD
+  subgraph Entities["External Entities"]
+    CO["Assigned Contractor"]
+    LO["Landowner (Project Owner)"]
+  end
+
+  subgraph Subprocesses["Process 5.0 Subprocesses"]
+    P51(("5.1 Log Milestone Progress\n& Upload Photos"))
+    P52(("5.2 Submit Milestone\nfor Owner Review"))
+    P53(("5.3 Review Milestone\n& Sign-off / Rework"))
+    P54(("5.4 Submit & Decide\nChange Requests"))
+    P55(("5.5 Request Handover\n& Approve Completion"))
+  end
+
+  subgraph Stores["Data Stores"]
+    D3[("D3: project_packages")]
+    D5[("D5: milestones, progress_updates\n& change_requests")]
+    D6[("D6: reviews, notifications\n& audit_logs")]
+    S1[("S1: progress-photos bucket")]
+  end
+
+  %% Flow 1: Progress Logging
+  CO -- "1. Upload Photo & Notes" --> P51
+  P51 -- "Store image file" --> S1
+  P51 -- "Record progress_updates row" --> D5
+
+  %% Flow 2: Submit for Review
+  CO -- "2. Mark Milestone 100% Done" --> P52
+  P52 -- "Update milestone: submitted_for_review" --> D5
+  P52 -- "Notify Landowner" --> D6
+
+  %% Flow 3: Milestone Approval / Rework
+  LO -- "3. Approve Milestone or Rework" --> P53
+  P53 -- "If approved: status = approved" --> D5
+  P53 -- "If rework: status = rework_required" --> D5
+  P53 -- "Notify Contractor" --> D6
+
+  %% Flow 4: Change Request
+  CO -- "4. Scope/Price/Time Modification" --> P54
+  P54 -- "Record change_requests (submitted)" --> D5
+  LO -- "Decide Change Request (Approve/Reject)" --> P54
+  P54 -- "Update change_requests status" --> D5
+  P54 -- "Write Audit Log" --> D6
+
+  %% Flow 5: Handover & Completion
+  CO -- "5. Request Handover (All milestones approved)" --> P55
+  P55 -- "Update package: pending_handover" --> D3
+  LO -- "Confirm Completion" --> P55
+  P55 -- "Update package: completed" --> D3
+  P55 -- "Unlock review capability" --> D6

@@ -1,0 +1,32 @@
+sequenceDiagram
+  autonumber
+  actor Contractor as Approved Contractor
+  participant UI as React Presentation Layer
+  participant PropSvc as proposalService.js
+  participant DB as PostgreSQL Database
+  participant RLS as Row Level Security (RLS)
+
+  Contractor->>UI: Browses Open Work Packages & Inspects Scope
+  UI->>Contractor: Renders Package Details & Bill of Quantities Template
+  Contractor->>UI: Fills Proposal (Total Price, Duration, Terms, BOQ Items)
+  Contractor->>UI: Clicks "Submit Structured Proposal"
+
+  UI->>PropSvc: submitProposal(packageId, proposalData, itemsList)
+  PropSvc->>DB: INSERT INTO public.proposals (package_id, contractor_id, total_price, status: 'submitted')
+  DB->>RLS: Evaluates proposals_insert_policy
+  Note over RLS: Calls public.is_approved_contractor()
+
+  alt Contractor is Approved
+    RLS-->>DB: Policy check PASSED
+    DB-->>PropSvc: Proposal Inserted (id: UUID)
+    PropSvc->>DB: INSERT INTO public.proposal_items (proposal_id, item_description, qty, unit, unit_price, total_price)
+    DB-->>PropSvc: Line Items Persisted
+    PropSvc->>DB: INSERT INTO public.notifications (user_id: owner_id, message: "New proposal submitted")
+    PropSvc-->>UI: Proposal Successfully Submitted
+    UI-->>Contractor: Display Success Banner & Proposal Status: 'submitted'
+  else Contractor is Unapproved / Pending / Rejected
+    RLS-->>DB: Policy check REJECTED (403 Forbidden)
+    DB-->>PropSvc: Error: new row violates row-level security policy
+    PropSvc-->>UI: Error: Unapproved contractors cannot submit proposals
+    UI-->>Contractor: Display KYC Warning Modal
+  end

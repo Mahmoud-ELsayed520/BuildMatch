@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  actor Landowner as Landowner
+  participant UI as React Presentation Layer
+  participant ProjSvc as projectService.js
+  participant PkgSvc as packageService.js
+  participant StorageAPI as Supabase Storage Engine
+  participant DB as PostgreSQL Database
+
+  Landowner->>UI: Enters Project Metadata (Title, City, Land Area m2, Floors, Budget)
+  Landowner->>UI: Defines Work Packages (e.g., Concrete Skeleton, Plumbing)
+  opt Upload Architectural Blueprints
+    Landowner->>UI: Attaches PDF/DWG Drawing (is_public: true)
+    UI->>StorageAPI: upload to 'project-files' ({project_id}/{filename})
+    StorageAPI-->>UI: File Upload Success
+  end
+  Landowner->>UI: Clicks "Publish Project to Marketplace"
+
+  UI->>ProjSvc: createProject({ ...projectData, status: 'open_for_proposals' })
+  ProjSvc->>DB: INSERT INTO public.projects (...)
+  DB-->>ProjSvc: Returns created project row (id: UUID)
+
+  loop For each defined work package
+    UI->>PkgSvc: createPackage(projectId, { title, category, scope, budget, status: 'open' })
+    PkgSvc->>DB: INSERT INTO public.project_packages (...)
+    DB-->>PkgSvc: Package row inserted
+  end
+
+  DB-->>UI: Project & Packages Published
+  UI-->>Landowner: "Project successfully published to Marketplace"

@@ -1,0 +1,23 @@
+graph TD
+  Start([Start: Milestone Activated]) --> ExecWork[Contractor Executes Physical On-Site Work]
+  ExecWork --> CaptureEvidence[Take On-Site Construction Photos]
+  CaptureEvidence --> UploadUpdate[Upload Photos to progress-photos Bucket & Log Progress %]
+  UploadUpdate --> CheckComplete{Milestone 100% Complete?}
+
+  CheckComplete -- No --> ExecWork
+  CheckComplete -- Yes --> SubmitReview[Submit Milestone for Review: status = submitted_for_review]
+  SubmitReview --> OwnerInspection[Landowner Inspects Technical Photos & Site Quality]
+
+  OwnerInspection --> OwnerDecision{Landowner Decision}
+
+  OwnerDecision -- Approve --> MarkApproved[Set status = approved, approved_at = NOW]
+  MarkApproved --> ReleasePay[Authorize Offline Milestone Payment Tranche]
+  ReleasePay --> NextMilestone{More Milestones in Sequence?}
+
+  NextMilestone -- Yes --> ActivateNext[Activate Next Milestone: status = in_progress]
+  ActivateNext --> ExecWork
+  NextMilestone -- No --> ReadyHandover([All Milestones Complete: Package Ready for Handover])
+
+  OwnerDecision -- Request Rework --> MarkRework[Set status = rework_required & Enter Defect Notes]
+  MarkRework --> NotifyContractor[Notify Contractor of Required Corrections]
+  NotifyContractor --> ExecWork

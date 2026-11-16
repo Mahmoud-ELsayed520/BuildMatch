@@ -1,0 +1,60 @@
+graph TD
+  subgraph Entities["External Entities"]
+    LO["Landowner"]
+    CO["Contractor"]
+    AD["Platform Admin"]
+  end
+
+  subgraph Processes["System Processes"]
+    P1(("1.0 Authentication\n& Profiles"))
+    P2(("2.0 Contractor KYC\n& Verification"))
+    P3(("3.0 Project &\nPackage Mgmt"))
+    P4(("4.0 Bidding &\nProposal Selection"))
+    P5(("5.0 Construction\nExecution & Tracking"))
+    P6(("6.0 Governance &\nAudit Logging"))
+  end
+
+  subgraph DataStores["Data Stores"]
+    D1[("D1: profiles")]
+    D2[("D2: contractor_profiles &\nverification_docs")]
+    D3[("D3: projects, project_packages\n& project_files")]
+    D4[("D4: proposals &\nproposal_items")]
+    D5[("D5: milestones, progress_updates\n& change_requests")]
+    D6[("D6: audit_logs, reviews\n& notifications")]
+  end
+
+  %% Flow to P1
+  LO -- "Register / Login" --> P1
+  CO -- "Register / Login" --> P1
+  AD -- "Admin Login" --> P1
+  P1 <--> D1
+
+  %% Flow to P2
+  CO -- "KYC Documents" --> P2
+  AD -- "Verification Decision" --> P2
+  P2 <--> D2
+  P2 -- "Verification Event" --> P6
+
+  %% Flow to P3
+  LO -- "Project & Package Details" --> P3
+  P3 <--> D3
+  CO -- "Browse Open Packages" --> P3
+
+  %% Flow to P4
+  CO -- "Submit BOQ Proposal" --> P4
+  LO -- "Compare & Select Contractor" --> P4
+  P4 <--> D4
+  P4 <--> D3
+  P4 -- "Award Event" --> P6
+
+  %% Flow to P5
+  CO -- "Progress Log & Photos" --> P5
+  CO -- "Change Request / Handover" --> P5
+  LO -- "Milestone Review / Sign-off" --> P5
+  P5 <--> D5
+  P5 <--> D3
+  P5 -- "Milestone / Handover Event" --> P6
+
+  %% Flow to P6
+  P6 <--> D6
+  AD -- "Audit & Dispute Review" --> P6
