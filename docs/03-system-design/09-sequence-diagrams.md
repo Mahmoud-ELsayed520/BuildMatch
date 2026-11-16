@@ -311,7 +311,7 @@ sequenceDiagram
   Contractor->>UI: Fills Change Request (Title, Reason, Scope Change, Cost: +50,000 EGP, Time: +7 Days)
   UI->>ExecSvc: submitChangeRequest(packageId, changeData)
   ExecSvc->>DB: INSERT INTO change_requests (package_id, requested_by, title, cost_impact, time_impact_days, status: 'submitted')
-  ExecSvc->>DB: INSERT INTO notifications (owner_id, "New Change Request submitted")
+  ExecSvc->>DB: INSERT INTO notifications (user_id=project_owner_id, "New Change Request submitted")
   DB-->>UI: Change Request Submitted
   UI-->>Contractor: "Change request pending owner decision"
 
@@ -319,9 +319,9 @@ sequenceDiagram
   alt Landowner Approves Change
     Landowner->>UI: Clicks "Approve Change Request"
     UI->>ExecSvc: decideChangeRequest(requestId, 'approved', 'Approved based on updated drawings')
-    ExecSvc->>RPC: decide_change_request(p_request_id, 'approved', notes)
-    Note over RPC: Verifies caller is landowner (p.owner_id = auth.uid())
-    RPC->>DB: UPDATE change_requests SET status='approved', decision_by=auth.uid(), decision_notes=notes, decided_at=NOW() WHERE id=p_request_id
+    ExecSvc->>RPC: decide_change_request(p_request_id, 'approved', p_notes)
+    Note over RPC: Verifies caller is project owner (v_owner_id = auth.uid()) or Admin
+    RPC->>DB: UPDATE change_requests SET status='approved', decision_by=auth.uid(), decision_notes=p_notes, decided_at=NOW() WHERE id=p_request_id
     RPC->>DB: UPDATE project_packages SET estimated_budget = estimated_budget + cost_impact, target_duration_days = target_duration_days + time_impact WHERE id=v_package_id
     Note over RPC: Note: No audit_log inserted in current RPC implementation
     RPC->>DB: INSERT INTO notifications (user_id=v_requested_by, title='تحديث طلب التغيير', type='change_request_approved')
@@ -331,8 +331,8 @@ sequenceDiagram
   else Landowner Rejects Change
     Landowner->>UI: Clicks "Reject Change Request" with Reason
     UI->>ExecSvc: decideChangeRequest(requestId, 'rejected', 'Cost deemed excessive')
-    ExecSvc->>RPC: decide_change_request(p_request_id, 'rejected', notes)
-    RPC->>DB: UPDATE change_requests SET status='rejected', decision_by=auth.uid(), decision_notes=notes, decided_at=NOW() WHERE id=p_request_id
+    ExecSvc->>RPC: decide_change_request(p_request_id, 'rejected', p_notes)
+    RPC->>DB: UPDATE change_requests SET status='rejected', decision_by=auth.uid(), decision_notes=p_notes, decided_at=NOW() WHERE id=p_request_id
     Note over RPC: Package budget and timeline remain unchanged
     RPC->>DB: INSERT INTO notifications (user_id=v_requested_by, title='تحديث طلب التغيير', type='change_request_rejected')
     RPC-->>ExecSvc: Return Rejection JSON { success: true, status: 'rejected' }
