@@ -46,13 +46,29 @@ CREATE POLICY "project_files_storage_select"
     bucket_id = 'project-files'
     AND (
       public.is_admin()
+      -- 1. Project owner has full read access to all their project files
       OR EXISTS (
         SELECT 1 FROM public.projects p
         WHERE p.id::text = (storage.foldername(name))[1]
-        AND (
-          p.owner_id = auth.uid()
-          OR p.status NOT IN ('draft', 'cancelled')
-        )
+        AND p.owner_id = auth.uid()
+      )
+      -- 2. Assigned contractor has access to files for active assigned execution
+      OR EXISTS (
+        SELECT 1 FROM public.project_packages pkg
+        JOIN public.projects p ON p.id = pkg.project_id
+        WHERE p.id::text = (storage.foldername(name))[1]
+        AND pkg.assigned_contractor_id = auth.uid()
+        AND pkg.status IN ('assigned', 'in_progress', 'pending_handover')
+      )
+      -- 3. Authenticated contractors browsing published projects can ONLY access explicitly public files
+      OR EXISTS (
+        SELECT 1 FROM public.project_files pf
+        JOIN public.projects p ON p.id = pf.project_id
+        WHERE p.id::text = (storage.foldername(name))[1]
+        AND pf.file_path = name
+        AND pf.is_public = true
+        AND p.status NOT IN ('draft', 'cancelled')
+        AND auth.role() = 'authenticated'
       )
     )
   );

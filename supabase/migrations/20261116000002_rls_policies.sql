@@ -56,10 +56,23 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 -- 3. PROFILES POLICIES
 -- ------------------------------------------------------------------------------
 
--- Public read access to basic user profile info (name, city, role)
+-- Restricted read: Users can read their own profile; admins can read all;
+-- Active project partners (owner and assigned contractor) can view each other
 CREATE POLICY "profiles_select_policy"
   ON public.profiles FOR SELECT
-  USING (true);
+  USING (
+    auth.uid() = id
+    OR public.is_admin()
+    OR EXISTS (
+      SELECT 1 FROM public.project_packages pkg
+      JOIN public.projects p ON p.id = pkg.project_id
+      WHERE (
+        (p.owner_id = auth.uid() AND pkg.assigned_contractor_id = profiles.id)
+        OR (pkg.assigned_contractor_id = auth.uid() AND p.owner_id = profiles.id)
+      )
+      AND pkg.status IN ('assigned', 'in_progress', 'pending_handover')
+    )
+  );
 
 -- Users can insert their own profile during registration; PREVENT self-registering as admin
 CREATE POLICY "profiles_insert_policy"
@@ -81,11 +94,12 @@ CREATE POLICY "profiles_update_policy"
 -- 4. CONTRACTOR PROFILES POLICIES
 -- ------------------------------------------------------------------------------
 
--- Public can view approved contractors; contractors can view their own; admin can view all
+-- Public contractor directory view: authenticated users can view approved contractors;
+-- contractors can view their own; admin can view all
 CREATE POLICY "contractor_profiles_select_policy"
   ON public.contractor_profiles FOR SELECT
   USING (
-    verification_status = 'approved'
+    (verification_status = 'approved' AND auth.role() = 'authenticated')
     OR auth.uid() = id
     OR public.is_admin()
   );
@@ -556,3 +570,54 @@ CREATE POLICY "audit_logs_select_policy"
 CREATE POLICY "audit_logs_insert_policy"
   ON public.audit_logs FOR INSERT
   WITH CHECK (public.is_admin());
+
+-- ------------------------------------------------------------------------------
+-- 18. SAFE PUBLIC CONTRACTOR DIRECTORY VIEW & FUNCTION
+-- Exposes ONLY approved non-sensitive fields without private phone or KYC notes
+-- ------------------------------------------------------------------------------
+CREATE OR REPLACE VIEW public.contractor_public_directory AS
+SELECT
+  cp.id,
+  cp.business_name,
+  cp.bio,
+  cp.specializations,
+  cp.years_of_experience,
+  cp.portfolio_items,
+  p.city,
+  p.avatar_url
+FROM public.contractor_profiles cp
+JOIN public.profiles p ON p.id = cp.id
+WHERE cp.verification_status = 'approved';
+
+CREATE OR REPLACE FUNCTION public.get_public_contractor_profile(p_contractor_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+STABLE
+SET search_path = public, auth, pg_temp
+AS $$
+DECLARE
+  v_result JSONB;
+BEGIN
+  SELECT jsonb_build_object(
+    'id', cp.id,
+    'business_name', cp.business_name,
+    'bio', cp.bio,
+    'specializations', cp.specializations,
+    'years_of_experience', cp.years_of_experience,
+    'portfolio_items', cp.portfolio_items,
+    'city', p.city,
+    'avatar_url', p.avatar_url
+  )
+  INTO v_result
+  FROM public.contractor_profiles cp
+  JOIN public.profiles p ON p.id = cp.id
+  WHERE cp.id = p_contractor_id AND cp.verification_status = 'approved';
+
+  RETURN v_result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_public_contractor_profile(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_public_contractor_profile(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_public_contractor_profile(UUID) TO anon;

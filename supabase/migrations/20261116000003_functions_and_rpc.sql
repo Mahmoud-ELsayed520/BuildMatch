@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.select_contractor_for_package(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, auth, pg_temp
 AS $$
 DECLARE
   v_project_id UUID;
@@ -25,6 +25,7 @@ DECLARE
   v_package_status TEXT;
   v_contractor_id UUID;
   v_proposal_status TEXT;
+  v_contractor_approved BOOLEAN;
   v_total_packages INTEGER;
   v_assigned_packages INTEGER;
 BEGIN
@@ -63,6 +64,16 @@ BEGIN
 
   IF v_proposal_status <> 'submitted' THEN
     RAISE EXCEPTION 'Only submitted proposals can be accepted. Current status: %', v_proposal_status;
+  END IF;
+
+  -- 5. Verify contractor is approved
+  SELECT (verification_status = 'approved')
+  INTO v_contractor_approved
+  FROM public.contractor_profiles
+  WHERE id = v_contractor_id;
+
+  IF NOT COALESCE(v_contractor_approved, false) THEN
+    RAISE EXCEPTION 'Cannot award work package to an unverified or rejected contractor.';
   END IF;
 
   -- 5. Atomic state transitions:
@@ -152,7 +163,7 @@ CREATE OR REPLACE FUNCTION public.request_package_handover(p_package_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, auth, pg_temp
 AS $$
 DECLARE
   v_assigned_contractor UUID;
@@ -215,7 +226,7 @@ CREATE OR REPLACE FUNCTION public.approve_package_completion(p_package_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, auth, pg_temp
 AS $$
 DECLARE
   v_project_id UUID;
@@ -300,7 +311,7 @@ CREATE OR REPLACE FUNCTION public.decide_change_request(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, auth, pg_temp
 AS $$
 DECLARE
   v_package_id UUID;
@@ -379,7 +390,7 @@ CREATE OR REPLACE FUNCTION public.admin_verify_contractor(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, auth, pg_temp
 AS $$
 BEGIN
   IF NOT public.is_admin() THEN
@@ -430,3 +441,22 @@ BEGIN
   RETURN jsonb_build_object('success', true, 'verification_status', p_decision);
 END;
 $$;
+
+-- ------------------------------------------------------------------------------
+-- 6. EXPLICIT EXECUTE PRIVILEGES & ROLE RESTRICTIONS
+-- Deny public execution; grant only to authenticated roles
+-- ------------------------------------------------------------------------------
+REVOKE ALL ON FUNCTION public.select_contractor_for_package(UUID, UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.select_contractor_for_package(UUID, UUID) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.request_package_handover(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.request_package_handover(UUID) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.approve_package_completion(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.approve_package_completion(UUID) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.decide_change_request(UUID, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.decide_change_request(UUID, TEXT, TEXT) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.admin_verify_contractor(UUID, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_verify_contractor(UUID, TEXT, TEXT) TO authenticated;
