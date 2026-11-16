@@ -1,53 +1,53 @@
-# BuildMatch — المخطط الزمني وخطة التعافي (Gantt Chart & Recovery Schedule)
+# BuildMatch — Gantt Chart & Recovery Schedule
 
-> **تنويه تاريخي وإداري:**  
-> التاريخ الحالي هو **16 نوفمبر 2026**.  
-> محطات التسليم الرسمية السابقة لـ DEPI كانت كالتالي:
-> - **16 أكتوبر 2026:** التخطيط والمراجعة الأدبية وجمع المتطلبات (تاريخ انقضى ولم يتم اعتماده رسميًا في حينه).
-> - **06 نوفمبر 2026:** التحليل والتصميم الهندسي للنظام (تاريخ انقضى).
-> 
-> تم إعداد هذا الجدول كـ **خطة تعافي مقترحة ومكثفة (Proposed Recovery Plan)** لإنهاء كامل المتطلبات البرمجية والتسليم النهائي قبل المواعيد النهائية الرسمية:
-> - **30 نوفمبر 2026:** الموعد النهائي لاكتمال التنفيذ البرمجي (Implementation Deadline).
-> - **04 ديسمبر 2026:** العرض التقديمي النهائي ومناقشة المشاريع وتسليم التقارير (Final Presentation & Submission).
+**Status date:** 2026-11-16  
+**Note:** DEPI dates below are official target dates from the supplied guideline. Recovery dates are team proposals, not DEPI-issued extensions.
 
----
+## 1. Official DEPI milestones
 
-## 1. المخطط الزمني لخطة التعافي (Mermaid Gantt Chart)
+| Deliverable | Official DEPI target |
+|---|---:|
+| Project Planning & Management | 2026-10-16 |
+| Literature Review | 2026-10-16 |
+| Requirements Gathering | 2026-10-16 |
+| System Analysis & Design | 2026-11-06 |
+| Implementation (Source Code & Execution) | 2026-11-30 |
+| Final Presentation, Testing & Reports | 2026-12-04 |
+
+## 2. Recovery Gantt
 
 ```mermaid
 gantt
-    title BuildMatch Project Recovery Schedule (Nov 16 - Dec 04, 2026)
-    dateFormat  YYYY-MM-DD
-    axisFormat  %d-%b
+    title BuildMatch Pre-Implementation Closure and Recovery Plan
+    dateFormat YYYY-MM-DD
+    axisFormat %d-%b
 
-    section المحطات الرسمية السابقة (تاريخية)
-    تخطيط المشروع وجمع المتطلبات (فات)  :crit, done, m1, 2026-10-01, 2026-10-16
-    تحليل وتصميم النظام (فات)           :crit, done, m2, 2026-10-17, 2026-11-06
+    section Pre-implementation closure
+    Consolidate DEPI documentation and evidence :active, p1, 2026-11-16, 2026-11-17
+    Correct Figma handoff and repository baseline :p2, 2026-11-16, 2026-11-17
+    Collect teammate role choices and confirm RACI :p3, 2026-11-16, 2026-11-18
+    Final implementation handoff gate :milestone, p4, 2026-11-18, 0d
 
-    section خطة التعافي الحالية (Proposed Recovery Plan)
-    تأسيس البنية المعمارية ومستودع GitHub وSupabase :active, rec1, 2026-11-16, 2026-11-17
-    توثيق المتطلبات وقواعد الأعمال وهندسة البيانات   :rec2, 2026-11-18, 2026-11-19
-    تصميم Figma المعتمد وتفعيل سحابة Supabase        :rec3, 2026-11-20, 2026-11-21
-    التنفيذ البرمجي المتوازي للوحدات (الأعضاء 2 و3 و4) :rec4, 2026-11-22, 2026-11-26
-    التكامل الشامل واختبارات الأمان وRLS             :rec5, 2026-11-27, 2026-11-28
-    تجميد الكود البرمجي والإعداد للنشر النهائي       :crit, rec6, 2026-11-29, 2026-11-30
+    section Implementation (future phase)
+    Parallel frontend modules and backend foundation :p5, 2026-11-18, 2026-11-26
+    Integration and feature completion :p6, 2026-11-27, 2026-11-29
+    Code freeze and release candidate :crit, p7, 2026-11-30, 1d
 
-    section مرحلة المناقشة والتقييم النهائي
-    إعداد التقرير النهائي وضمان الجودة الشامل       :rec7, 2026-12-01, 2026-12-02
-    العرض التقديمي النهائي والمناقشة والتسليم الرسمي :crit, active, rec8, 2026-12-03, 2026-12-04
+    section Testing and final submission (future phase)
+    Regression, UAT, bug fixes, user manual and report :p8, 2026-12-01, 2026-12-03
+    Final presentation and submission :crit, p9, 2026-12-04, 1d
 ```
 
----
+## 3. Current stop point
 
-## 2. تفصيل مراحل خطة التعافي (Recovery Phases Breakdown)
+The current work is limited to the pre-implementation closure tasks. The proposed 2026-11-18 kickoff is conditional on named role assignments, repository access/branch synchronization, and Figma/API handoff review. If the gate is not met, the team lead must update the recovery schedule rather than silently treating the kickoff as completed.
 
-| المرحلة الزمنية | التواريخ | نطاق العمل والمخرجات المستهدفة | المسؤول |
-| :--- | :--- | :--- | :--- |
-| **المرحلة 1** | 16–17 نوفمبر 2026 | تأسيس بنية React وVite، هيكل المشروع، ربط عميل Supabase، بناء الهجرات الأربع، سياسات الأمان، وتكوين Git/GitHub CI. | قائد المشروع |
-| **المرحلة 2** | 18–19 نوفمبر 2026 | استكمال ملفات التوثيق الرسمية لـ DEPI (المتطلبات، المخططات، عقود الربط، قواميس البيانات). | الفريق كاملاً |
-| **المرحلة 3** | 20–21 نوفمبر 2026 | إنجاز نظام التصميم في Figma لجميع الشاشات وتجهيز بيانات الاختبار المحلية والسحابية. | قائد المشروع |
-| **المرحلة 4** | 22–26 نوفمبر 2026 | التنفيذ البرمجي التفرعي المستقل للواجهات الأمامية: وحدة المالك، وحدة المقاول، وحدة التنفيذ ولوحة الإدارة. | الأعضاء 2، 3، 4 |
-| **المرحلة 5** | 27–28 نوفمبر 2026 | دمج الفروع في `develop`، اختبارات التكامل مع Supabase، فحص تدفقات RLS ومنع الثغرات. | قائد المشروع والفريق |
-| **المرحلة 6** | 29–30 نوفمبر 2026 | تجميد إضافة ميزات جديدة (Code Freeze)، النشر التجريبي على Vercel، وفحص مؤشرات الأداء. | قائد المشروع |
-| **المرحلة 7** | 1–2 ديسمبر 2026 | إعداد ملفات التقرير النهائي ودليل المستخدم والمطابقة مع متطلبات لجان تقييم DEPI. | الفريق كاملاً |
-| **المرحلة 8** | 3–4 ديسمبر 2026 | التجهيز للعرض التقديمي الحي والمناقشة النهائية الرسمية. | الفريق كاملاً |
+## 4. Resource allocation
+
+- Project Leader: planning, architecture, Supabase foundation, Figma, shared contracts, integration oversight.
+- Landowner UI owner: landowner frontend module.
+- Contractor UI owner: contractor frontend module.
+- Execution/Admin UI owner: execution and admin frontend modules.
+- All members: onboarding, module review, integration, responsive/RTL QA, regression, and final presentation contributions.
+
+The three frontend role owners are not yet named; allocation is pending teammate choice.

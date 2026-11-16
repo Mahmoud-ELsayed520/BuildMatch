@@ -1,31 +1,41 @@
-# BuildMatch — مصفوفة الأدوار والمسؤوليات (Team Roles & RACI Matrix)
+# BuildMatch — Team Roles & RACI
 
-## 1. هيكل الفريق وتوزيع المهام
+**Status:** Proposed role model. Named assignments are pending teammate selection.
 
-| العضو | الصفة والدور في المشروع | المسار الفني الرئيسي والمسؤوليات |
-| :--- | :--- | :--- |
-| **محمود السيد (Mahmoud El Sayed)** | قائد المشروع ومهندس البنية التحتية (Project Leader & Architect) | - قيادة وتنسيق المشروع والتواصل مع إشراف DEPI.<br>- هندسة وتصميم قاعدة بيانات Supabase وهجرات SQL وRLS.<br>- تصميم نظام واجهات وتجربة المستخدم Figma الشامل.<br>- مراجعة الأكواد البرمجية واعتماد طلبات الدمج (PRs).<br>- إعداد وضمان جودة التوثيق المعماري النهائي. |
-| **عضو الفريق 2 (Member 2)** | مهندس واجهات أمامية (Front-End Engineer) | - تنفيذ **وحدة مالك المشروع (Landowner Module)**.<br>- شاشات إنشاء وتعديل المشاريع.<br>- شاشات تجزئة حزم العمل (Work Packages).<br>- واجهة مقارنة عروض المقاولين واعتماد الترسية. |
-| **عضو الفريق 3 (Member 3)** | مهندس واجهات أمامية (Front-End Engineer) | - تنفيذ **وحدة المقاول (Contractor Module)**.<br>- شاشات الملف المهني ورفع مستندات التوثيق الإداري.<br>- محرك استكشاف وتصفية المشاريع وحزم العمل.<br>- نموذج تقديم وتعديل عروض الأسعار (Proposals). |
-| **عضو الفريق 4 (Member 4)** | مهندس واجهات أمامية (Front-End Engineer) | - تنفيذ **وحدة إدارة ومتابعة التنفيذ (Execution Module)**.<br>- متابعة المراحل (Milestones) ورفع التحديثات المصورة.<br>- إدارة دورة حياة طلبات التعديل (Change Requests).<br>- تنفيذ **شاشات لوحة الإدارة والرقابة (Admin Dashboard UI)**. |
+## 1. Team structure
 
----
+All four members are on the React Front-End track. The Project Leader retains ownership of project coordination, architecture, Supabase/backend foundation, Figma, shared service contracts, and PR approval. The remaining three members choose from the frontend module roles below.
 
-## 2. مصفوفة المسؤوليات (RACI Matrix)
+| Role | Main responsibilities | Status |
+|---|---|---|
+| Project Leader / Architect / Backend Owner | Project coordination; architecture; Supabase schema/migrations/RLS/RPC/Storage; Figma; shared contracts; code review and integration | Confirmed |
+| Landowner Frontend Owner | Owner dashboard; project create/edit; work packages; proposal inbox/comparison; selection and owner-side decisions | Available for selection |
+| Contractor Frontend Owner | Contractor profile/KYC UI; package discovery; proposal/BOQ creation and management | Available for selection |
+| Execution & Admin Frontend Owner | Awarded packages; milestones; progress evidence; change requests; handover; admin verification/moderation UI | Available for selection |
 
-* **R (Responsible):** القائم الفعلي بالعمل.
-* **A (Accountable):** المعتمد والمسؤول النهائي عن جودة المخرج.
-* **C (Consulted):** المستشار الذي يُؤخذ رأيه.
-* **I (Informed):** المطلع على النتائج.
+A member may request a role based on skills and availability. The final allocation must be confirmed by the team before tasks are assigned.
 
-| مهمة / مخرج | محمود السيد (Leader) | عضو 2 (Landowner) | عضو 3 (Contractor) | عضو 4 (Execution/Admin) |
-| :--- | :---: | :---: | :---: | :---: |
-| بنية React الأساسية والتهيئة | **A / R** | I | I | I |
-| قاعدة بيانات Supabase وهجرات SQL | **A / R** | I | I | I |
-| أمان وسياسات RLS ووظائف RPC | **A / R** | I | I | I |
-| تصميم واجهات Figma الشاملة | **A / R** | C | C | C |
-| واجهات وحدة المالك | A | **R** | I | I |
-| واجهات وحدة المقاول | A | I | **R** | I |
-| واجهات التنفيذ ولوحة الإدارة | A | I | I | **R** |
-| دمج الفروع ومراجعة الكود | **A / R** | C | C | C |
-| التوثيق المعماري والتقرير النهائي | **A / R** | C | C | C |
+## 2. RACI
+
+R = Responsible, A = Accountable, C = Consulted, I = Informed.
+
+| Deliverable | Project Leader | Landowner role | Contractor role | Execution/Admin role |
+|---|---:|---:|---:|---:|
+| Project coordination and architecture | A/R | I | I | I |
+| Supabase schema, migrations, RLS, RPC, Storage | A/R | I | I | I |
+| Figma system and UI/UX handoff | A/R | C | C | C |
+| Authentication foundation and shared contracts | A/R | C | C | C |
+| Landowner UI module | A | R | I | C |
+| Contractor UI module | A | I | R | I |
+| Execution UI module | A | C | I | R |
+| Admin UI module | A | I | C | R |
+| Integration and PR approval | A/R | R | R | R |
+| QA and final submission | A | R | R | R |
+
+## 3. Working boundaries
+
+- Frontend owners consume documented services and API/data contracts.
+- Only the Project Leader changes schema migrations, RLS policies, RPC signatures, and storage authorization rules unless explicitly delegated.
+- No member commits directly to `main` or `develop`.
+- Each module owner submits PRs to `develop`; Project Leader reviews and approves.
+- Role labels must be replaced with actual names and GitHub usernames after selection.
