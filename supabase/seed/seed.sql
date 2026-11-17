@@ -29,7 +29,9 @@ VALUES
   ('00000000-0000-0000-0000-000000000004', 'contractor', 'م. إبراهيم فؤاد (مكتب النيل للمقاولات)', '+201000000004', 'Alexandria')
 ON CONFLICT (id) DO UPDATE SET
   full_name = EXCLUDED.full_name,
-  role = EXCLUDED.role;
+  role = EXCLUDED.role,
+  phone = EXCLUDED.phone,
+  city = EXCLUDED.city;
 
 -- 3. Insert Contractor Profiles
 INSERT INTO public.contractor_profiles (id, business_name, bio, specializations, years_of_experience, verification_status, verified_at, verified_by)
@@ -54,7 +56,14 @@ VALUES
     NULL,
     NULL
   )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  business_name = EXCLUDED.business_name,
+  bio = EXCLUDED.bio,
+  specializations = EXCLUDED.specializations,
+  years_of_experience = EXCLUDED.years_of_experience,
+  verification_status = EXCLUDED.verification_status,
+  verified_at = EXCLUDED.verified_at,
+  verified_by = EXCLUDED.verified_by;
 
 -- 4. Insert Sample Projects
 INSERT INTO public.projects (id, owner_id, title, description, city, district, land_area_sqm, floors_count, construction_type, estimated_budget, status)

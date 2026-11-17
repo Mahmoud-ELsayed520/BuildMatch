@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { supabase } from '../services/supabase/client';
 import { authService } from '../services/api/authService';
 
@@ -8,48 +8,52 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const profileRequest = useRef(0);
 
   useEffect(() => {
-    // Initial active session check
-    async function initAuth() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setUser(session.user);
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          setProfile(profileData || null);
-        }
-      } catch (err) {
-        console.error('[AuthContext] Initialization error:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    initAuth();
-
-    // Listen to Supabase auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        setProfile(profileData || null);
-      } else {
+    let active = true;
+    const applySession = async (session) => {
+      const requestId = ++profileRequest.current;
+      if (!session?.user) {
         setUser(null);
         setProfile(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+      setUser(session.user);
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+        if (error) throw error;
+        if (active && requestId === profileRequest.current) setProfile(data || null);
+      } catch (err) {
+        if (active && requestId === profileRequest.current) {
+          console.error('[AuthContext] Profile loading error:', err);
+          setProfile(null);
+        }
+      } finally {
+        if (active && requestId === profileRequest.current) setLoading(false);
+      }
+    };
+
+    // Listen to Supabase auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void applySession(session);
+    });
+
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) throw error;
+      if (active && profileRequest.current === 0) void applySession(session);
+    }).catch((err) => {
+      if (active) {
+        console.error('[AuthContext] Initialization error:', err);
+        setLoading(false);
+      }
     });
 
     return () => {
+      active = false;
+      profileRequest.current += 1;
       subscription?.unsubscribe();
     };
   }, []);

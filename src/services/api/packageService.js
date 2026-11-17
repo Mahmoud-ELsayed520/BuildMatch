@@ -1,5 +1,7 @@
 import { supabase } from '../supabase/client';
 
+const PACKAGE_DRAFT_FIELDS = ['title', 'category', 'description', 'scope_of_work', 'estimated_budget', 'target_duration_days'];
+
 export const packageService = {
   async getPackagesByProject(projectId) {
     const { data, error } = await supabase
@@ -24,9 +26,12 @@ export const packageService = {
   },
 
   async createPackage(projectId, packageData) {
+    const draftData = Object.fromEntries(PACKAGE_DRAFT_FIELDS
+      .filter((field) => packageData[field] !== undefined)
+      .map((field) => [field, packageData[field]]));
     const { data, error } = await supabase
       .from('project_packages')
-      .insert({ ...packageData, project_id: projectId })
+      .insert({ ...draftData, project_id: projectId })
       .select()
       .single();
 
@@ -35,12 +40,9 @@ export const packageService = {
   },
 
   async publishPackage(packageId) {
-    const { data, error } = await supabase
-      .from('project_packages')
-      .update({ status: 'open' })
-      .eq('id', packageId)
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc('publish_project_package', {
+      p_package_id: packageId,
+    });
 
     if (error) throw error;
     return data;

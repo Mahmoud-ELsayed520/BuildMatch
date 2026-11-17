@@ -261,30 +261,33 @@ sequenceDiagram
   participant StorageAPI as Supabase Storage Engine
   participant DB as PostgreSQL Database
 
-  Contractor->>UI: Logs Milestone Progress (Percentage: 100%, Notes)
+  Contractor->>UI: Starts or resumes milestone
+  UI->>ExecSvc: updateMilestoneStatus(milestoneId, in_progress)
+  ExecSvc->>DB: RPC update_milestone_status(id, in_progress, null)
+  DB->>DB: Lock milestone/package and validate actor + old status
+  DB-->>UI: Updated milestone row
+  Contractor->>UI: Logs Milestone Progress (Notes and percentage)
   Contractor->>UI: Attaches Site Photos (JPEG/PNG)
   UI->>ExecSvc: logProgress(milestoneId, { notes, percentage: 100, files })
   ExecSvc->>StorageAPI: upload to 'progress-photos' ({package_id}/{milestone_id}/{filename})
   StorageAPI-->>ExecSvc: Upload URLs returned
   ExecSvc->>DB: INSERT INTO progress_updates (milestone_id, contractor_id, percentage_completed, photos)
-  ExecSvc->>DB: UPDATE milestones SET status='submitted_for_review', submitted_at=NOW()
-  ExecSvc->>DB: INSERT INTO notifications (owner_id, "Milestone ready for review")
+  UI->>ExecSvc: updateMilestoneStatus(milestoneId, submitted_for_review)
+  ExecSvc->>DB: RPC update_milestone_status(id, submitted_for_review, null)
   DB-->>UI: Milestone Updated
   UI-->>Contractor: "Milestone submitted for review"
 
   Landowner->>UI: Opens Execution Workspace & Inspects Photos
   alt Landowner Approves Deliverable
     Landowner->>UI: Clicks "Approve Milestone"
-    UI->>ExecSvc: approveMilestone(milestoneId)
-    ExecSvc->>DB: UPDATE milestones SET status='approved', approved_at=NOW()
-    ExecSvc->>DB: INSERT INTO notifications (contractor_id, "Milestone Approved - Payment Authorized")
+    UI->>ExecSvc: updateMilestoneStatus(milestoneId, approved)
+    ExecSvc->>DB: RPC update_milestone_status(id, approved, null)
     DB-->>UI: Status updated to 'approved'
     UI-->>Landowner: "Milestone approved successfully"
   else Landowner Requests Corrective Rework
     Landowner->>UI: Enters Defect Notes & Clicks "Request Rework"
-    UI->>ExecSvc: requestRework(milestoneId, notes)
-    ExecSvc->>DB: UPDATE milestones SET status='rework_required', rework_notes=notes
-    ExecSvc->>DB: INSERT INTO notifications (contractor_id, "Rework Required on Milestone")
+    UI->>ExecSvc: updateMilestoneStatus(milestoneId, rework_required, notes)
+    ExecSvc->>DB: RPC update_milestone_status(id, rework_required, notes)
     DB-->>UI: Status updated to 'rework_required'
     UI-->>Landowner: "Rework instructions sent to contractor"
   end

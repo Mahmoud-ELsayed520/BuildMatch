@@ -14,6 +14,7 @@ export function RegisterPage() {
   const { register: signup } = useAuth();
   const navigate = useNavigate();
   const [serverError, setServerError] = useState(null);
+  const [registrationNotice, setRegistrationNotice] = useState(null);
 
   const {
     register,
@@ -34,7 +35,12 @@ export function RegisterPage() {
   const onSubmit = async (data) => {
     try {
       setServerError(null);
-      await signup(data);
+      setRegistrationNotice(null);
+      const result = await signup(data);
+      if (!result?.session) {
+        setRegistrationNotice('تم إنشاء الحساب. راجع بريدك الإلكتروني لتأكيد العنوان، ثم سجّل الدخول.');
+        return;
+      }
       if (data.role === USER_ROLES.LANDOWNER) {
         navigate(ROUTES.LANDOWNER_DASHBOARD);
       } else {
@@ -55,6 +61,12 @@ export function RegisterPage() {
       {serverError && (
         <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
           {serverError}
+        </div>
+      )}
+
+      {registrationNotice && (
+        <div role="status" className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg">
+          {registrationNotice}
         </div>
       )}
 

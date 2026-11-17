@@ -1,7 +1,7 @@
 export function parseSupabaseError(error) {
-  if (!error) return 'حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.';
-
-  if (typeof error === 'string') return error;
+  const generic = 'حدث خطأ أثناء معالجة الطلب. يرجى المحاولة مرة أخرى.';
+  if (!error) return generic;
+  if (typeof error === 'string') return generic;
 
   // Supabase RLS violation
   if (error.code === '42501') {
@@ -18,5 +18,25 @@ export function parseSupabaseError(error) {
     return 'البيانات المدخلة لا تطابق الشروط والقواعد المحددة.';
   }
 
-  return error.message || 'حدث خطأ أثناء معالجة الطلب.';
+  if (error.code === '23503') {
+    return 'تعذر حفظ البيانات لأن السجل المرتبط غير موجود أو لم يعد متاحاً.';
+  }
+
+  if (error.code === '23502') {
+    return 'يرجى استكمال الحقول المطلوبة ثم المحاولة مرة أخرى.';
+  }
+
+  if (error.code === 'invalid_credentials' || error.code === 'invalid_login_credentials') {
+    return 'تعذر تسجيل الدخول. تحقق من البريد الإلكتروني وكلمة المرور.';
+  }
+
+  if (error.code === 'email_not_confirmed') {
+    return 'يرجى تأكيد البريد الإلكتروني من الرسالة المرسلة إليك قبل تسجيل الدخول.';
+  }
+
+  if (error.status === 0 || error.name === 'FetchError' || error.name === 'TypeError') {
+    return 'تعذر الاتصال بالخدمة. تحقق من اتصال الإنترنت ثم حاول مرة أخرى.';
+  }
+
+  return generic;
 }

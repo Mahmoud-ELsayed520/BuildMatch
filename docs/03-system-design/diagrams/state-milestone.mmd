@@ -1,12 +1,12 @@
 stateDiagram-v2
   [*] --> pending : Package awarded & milestone created
 
-  pending --> in_progress : Previous milestone approved / work initiated
+  pending --> in_progress : Assigned contractor starts work (secured RPC)
 
   in_progress --> submitted_for_review : Contractor logs 100% progress & uploads photos
 
-  submitted_for_review --> approved : Landowner approves photos & authorizes payment tranche
-  submitted_for_review --> rework_required : Landowner identifies defect & enters rework notes
+  submitted_for_review --> approved : Project owner or admin approves (secured RPC)
+  submitted_for_review --> rework_required : Project owner or admin enters rework notes (secured RPC)
 
   rework_required --> in_progress : Contractor resumes work to rectify defects
 

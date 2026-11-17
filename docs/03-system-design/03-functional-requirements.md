@@ -249,7 +249,7 @@ BuildMatch defines its functional requirements following IEEE 830-1998 standards
 - **Description:** The system shall allow the assigned contractor to log milestone progress updates, submit percentage of completion (0-100%), enter technical notes, and upload mandatory on-site progress photos into the secure `progress-photos` storage bucket.
 - **Primary Actor:** Assigned Contractor
 - **Preconditions:** Contractor is assigned to the package; milestone status is `pending` or `in_progress`.
-- **Expected Outcome:** Photos stored at path `{package_id}/{milestone_id}/{file_name}` in `progress-photos` bucket; progress log created in `public.progress_updates`; milestone transitions to `submitted_for_review` when completion reaches 100%.
+- **Expected Outcome:** Photos stored at path `{package_id}/{milestone_id}/{file_name}` in `progress-photos` bucket; progress log created in `public.progress_updates`; the assigned contractor starts/resumes the milestone and submits it for review through the secured status-transition RPC.
 - **Priority:** High (P1)
 - **Implementation Status:** Implemented & Verified (Storage policy `progress_photos_storage_insert` enforces assigned contractor access; service in `executionService.js`).
 
@@ -259,7 +259,7 @@ BuildMatch defines its functional requirements following IEEE 830-1998 standards
 - **Preconditions:** Landowner owns the project; milestone is `submitted_for_review`.
 - **Expected Outcome:** If approved: status becomes `approved`, `approved_at` timestamp set; subsequent milestone becomes eligible for work. If rework required: status becomes `rework_required`, contractor notified with rework notes.
 - **Priority:** High (P1)
-- **Implementation Status:** Implemented & Verified (`milestones_update_policy` enforces landowner approval rights; service in `executionService.js`).
+- **Implementation Status:** Implemented & Locally Verified (`update_milestone_status` enforces the transition graph and role rules; `executionService.js` invokes the RPC. Production application remains pending.)
 
 ### FR-EXEC-004: Formal Change Request Submission
 - **Description:** The system shall allow contractors or landowners to initiate formal Change Requests during execution whenever scope modifications, cost impacts (positive or negative EGP), or timeline adjustments (days) are required.

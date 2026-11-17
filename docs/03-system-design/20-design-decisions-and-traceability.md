@@ -94,7 +94,7 @@ The following matrix traces every approved capability from high-level business r
 | BR-06   | FR-COMP-002 | UC-COMP-02  | `proposalService.js`      | `select_contractor_for_package`   | N/A                         | DB-SEC-10 (Mutex)  |
 | BR-07   | FR-EXEC-001 | UC-EXEC-01  | `executionService.js`     | `public.milestones`               | N/A                         | Migration 01 Test  |
 | BR-07   | FR-EXEC-002 | UC-EXEC-01  | `executionService.js`     | `public.progress_updates`         | `progress-photos` (Priv)    | DB-SEC-13          |
-| BR-07   | FR-EXEC-003 | UC-EXEC-02  | `executionService.js`     | `milestones_update_policy`        | N/A                         | Migration 02 Test  |
+| BR-07   | FR-EXEC-003 | UC-EXEC-02  | `executionService.js`     | `update_milestone_status` RPC     | N/A                         | Migration 07 + local DB regression suite |
 | BR-07   | FR-EXEC-004 | UC-EXEC-03  | `executionService.js`     | `public.change_requests`          | N/A                         | Migration 01 Test  |
 | BR-07   | FR-EXEC-005 | UC-EXEC-04  | `executionService.js`     | `decide_change_request` RPC        | N/A                         | Migration 03 Test  |
 | BR-07   | FR-EXEC-006 | UC-EXEC-05/06| `executionService.js`     | `request_handover` / `completion`  | N/A                         | Migration 03 Test  |

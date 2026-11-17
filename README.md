@@ -43,9 +43,10 @@
 ## 4. Getting Started
 
 ### Prerequisites
-- **Node.js:** v18.0.0 or higher (v20+ recommended)
-- **npm:** v9.0.0 or higher
+- **Node.js:** v20 LTS (same major version used by CI)
+- **npm:** v10 or later
 - **Git**
+- **PostgreSQL 17 binaries** for `npm run test:db` (or configure `PG_BIN` to their `bin` directory)
 
 ### Installation
 
@@ -61,10 +62,10 @@
    ```
 
 3. **Configure Environment Variables:**
-   ```bash
-   cp .env.example .env
+   ```powershell
+   Copy-Item .env.example .env.local
    ```
-   Edit `.env` and supply your Supabase project URL and anonymous public key:
+   Edit `.env.local` and supply the Supabase project URL and publishable/legacy anon key provided securely by the project leader. Never use a service-role or secret key in the browser:
    ```env
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-public-key
@@ -79,20 +80,27 @@
 5. **Run Linting & Tests:**
    ```bash
    npm run lint
-   npm run test
+   npm test
+   npm run test:db
    npm run build
    ```
+   `npm run test:db` uses an isolated local PostgreSQL cluster in `.pgdata_test` on port 5433. It refuses to run destructive setup against a server whose data directory is outside that configured test cluster.
 
 ---
 
 ## 5. Database & Supabase Migrations
 
-All database schemas, constraints, RLS policies, RPC functions, and storage definitions are version-controlled under `supabase/migrations/`:
+All database schemas, constraints, RLS policies, RPC functions, and storage definitions are version-controlled under `supabase/migrations/`. The connected BuildMatch Supabase project was read-only checked on 2026-11-17: it reports PostgreSQL 17.12 and six baseline migrations. Migrations `20261117000003`, `20261117175421`, and `20261117181620` are local-only and require separate review; do not apply them from teammate branches.
 
 - `20261116000001_initial_schema.sql` — Schema definitions, foreign keys, indexes, and constraints.
 - `20261116000002_rls_policies.sql` — Comprehensive Row Level Security policies.
 - `20261116000003_functions_and_rpc.sql` — Atomic selection RPC, change request triggers, and audit logging.
 - `20261116000004_storage_buckets.sql` — Storage bucket configuration (`project-files`, `verification-docs`, `progress-photos`).
+- `20261117000001_fix_rpc_authorization.sql` — RPC authorization and grants.
+- `20261117000002_set_view_security_invoker.sql` — public contractor view security.
+- `20261117000003_limit_milestone_status_updates.sql` — local milestone write hardening.
+- `20261117175421_auth_profile_bootstrap.sql` — local Auth profile bootstrap and safe legacy profile backfill.
+- `20261117181620_harden_business_update_paths.sql` — local package, proposal, and change-request write hardening.
 
 Local Supabase setup commands and test scripts are detailed in [`docs/05-implementation/database-setup-guide.md`](docs/05-implementation/database-setup-guide.md).
 
@@ -100,14 +108,13 @@ Local Supabase setup commands and test scripts are detailed in [`docs/05-impleme
 
 ## 6. Team Structure & Responsibilities
 
-Developed under the Digital Egypt Pioneers Initiative (DEPI) React Track (Group: `CAI5_SWD2_S7`):
+Developed under the Digital Egypt Pioneers Initiative (DEPI) React Track (Group: `CAI5_SWD2_S7`). Current frontend ownership is:
 
 - **Project Leader:** Overall Architecture, Database & Supabase Engineering, Security & RLS, Figma UI/UX Design System, Shared Contracts, Code Review and Integration Approval.
-- **Member 2:** Front-End Engineer (Module allocation pending team confirmation).
-- **Member 3:** Front-End Engineer (Module allocation pending team confirmation).
-- **Member 4:** Front-End Engineer (Module allocation pending team confirmation).
+- **Teammate 1:** Landowner frontend, BM-008-BM-013, `src/features/landowner/`.
+- **Teammate 2:** Contractor frontend, BM-014-BM-018, `src/features/contractor/`.
+- **Teammate 3:** Execution and Admin frontend, BM-019-BM-026, `src/features/execution/` and `src/features/admin/`.
 
-> **Important Note on Module Allocation:**  
-> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
+Project Leader owns shared architecture, Supabase, database changes, Auth foundation, API contracts, shared routes, integration, and final review. These allocations supersede older pre-implementation documents that said assignments were pending.
 
 For full team workflows, pre-implementation handoff, and branch guidelines, see [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/00-depi-readiness/`](docs/00-depi-readiness/), and [`docs/08-team-work/`](docs/08-team-work/).

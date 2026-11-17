@@ -1,10 +1,9 @@
 # BuildMatch — Team Task Breakdown (BM-001 to BM-030)
 
-**Status:** Ready for assignment. Member 2, Member 3, and Member 4 retain numbered identifiers, and module allocations remain pending team selection.  
+**Status:** BM-008 through BM-026 are assigned by the current project execution prompt.
 **Project Leader:** owns coordination, architecture, Supabase/backend foundation, Figma, shared contracts, and integration approval.
 
-> **Important Note on Module Allocation:**  
-> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
+Teammate labels identify workstream owners. The project leader maps the labels to names and keeps the shared architecture/API/database boundary.
 
 ## Phase 0 — Onboarding
 
@@ -26,46 +25,46 @@
 
 | ID | Task | Owner | Dependencies | Expected area | Acceptance criteria |
 |---|---|---|---|---|---|
-| BM-007 | Login, registration, role selection, unauthorized UI | Auth UI assignee (confirm at kickoff) | BM-005, BM-006 | `src/features/auth/` | Figma-aligned forms; validation and loading/error states; user cannot self-assign Admin |
+| BM-007 | Login, registration, role selection, unauthorized UI | Project Leader (shared Auth foundation) | BM-005, BM-006 | `src/features/auth/` | Figma-aligned forms; validation and loading/error states; user cannot self-assign Admin |
 
 ## Phase 3 — Landowner module
 
 | ID | Task | Owner | Dependencies | Expected area | Acceptance criteria |
 |---|---|---|---|---|---|
-| BM-008 | Landowner dashboard | Landowner UI owner | BM-003, BM-006 | `src/features/landowner/` | Owner-only access and loading/empty/error states |
-| BM-009 | Create/edit project flow | Landowner UI owner | BM-008, BM-005 | Landowner feature and project service | Required fields validate; draft/publish behavior matches requirements |
-| BM-010 | Work-package creation/management | Landowner UI owner | BM-009 | Landowner feature and package service | Package fields match schema contract; no undocumented fields |
-| BM-011 | Proposal inbox and comparison matrix | Landowner UI owner | BM-010, BM-017 | Landowner feature | Authorized owner sees comparable proposal data and statuses |
-| BM-012 | Contractor selection confirmation | Landowner UI owner | BM-011, BM-005 | Landowner feature/proposal service | Calls documented atomic RPC once; duplicate clicks prevented |
-| BM-013 | Owner-side change decision and cancellation | Landowner UI owner | BM-010, BM-022 | Landowner feature | Change decision follows RPC contract; effects shown only after confirmed decision |
+| BM-008 | Landowner dashboard | Teammate 1 | BM-003, BM-006 | `src/features/landowner/` | Owner-only access and loading/empty/error states |
+| BM-009 | Create/edit project flow | Teammate 1 | BM-008, BM-005 | Landowner feature and project service | Required fields validate; draft/publish behavior matches requirements |
+| BM-010 | Work-package creation/management | Teammate 1 | BM-009 | Landowner feature and package service | Package fields match schema contract; no undocumented fields |
+| BM-011 | Proposal inbox and comparison matrix | Teammate 1 | BM-010, BM-017 | Landowner feature | Authorized owner sees comparable proposal data and statuses |
+| BM-012 | Contractor selection confirmation | Teammate 1 | BM-011, BM-005 | Landowner feature/proposal service | Calls documented atomic RPC once; duplicate clicks prevented |
+| BM-013 | Owner-side change decision and cancellation | Teammate 1 | BM-010, BM-022 | Landowner feature | Change decision follows RPC contract; effects shown only after confirmed decision |
 
 ## Phase 4 — Contractor module
 
 | ID | Task | Owner | Dependencies | Expected area | Acceptance criteria |
 |---|---|---|---|---|---|
-| BM-014 | Contractor profile/onboarding UI | Contractor UI owner | BM-005, BM-006 | `src/features/contractor/` | Profile fields and verification status match requirements |
-| BM-015 | KYC upload and status UI | Contractor UI owner | BM-014, BM-004 | Contractor feature/storage service | Private storage paths/policies used; no public KYC exposure |
-| BM-016 | Package discovery/search/filtering | Contractor UI owner | BM-014, BM-010 | Contractor feature | Only eligible open packages shown; filters match documented fields |
-| BM-017 | Proposal and BOQ creation | Contractor UI owner | BM-016 | Contractor feature/proposal service | Price, duration, scope, inclusions/exclusions, BOQ validated; unverified contractors blocked |
-| BM-018 | Edit/withdraw submitted proposal | Contractor UI owner | BM-017 | Contractor feature | Allowed status transitions enforced |
+| BM-014 | Contractor profile/onboarding UI | Teammate 2 | BM-005, BM-006 | `src/features/contractor/` | Profile fields and verification status match requirements |
+| BM-015 | KYC upload and status UI | Teammate 2 | BM-014, BM-004 | Contractor feature/storage service | Private storage paths/policies used; no public KYC exposure |
+| BM-016 | Package discovery/search/filtering | Teammate 2 | BM-014, BM-010 | Contractor feature | Only eligible open packages shown; filters match documented fields |
+| BM-017 | Proposal and BOQ creation | Teammate 2 | BM-016 | Contractor feature/proposal service | Price, duration, scope, inclusions/exclusions, BOQ validated; unverified contractors blocked |
+| BM-018 | Edit/withdraw submitted proposal | Teammate 2 | BM-017 | Contractor feature | Allowed status transitions enforced |
 
 ## Phase 5 — Execution module
 
 | ID | Task | Owner | Dependencies | Expected area | Acceptance criteria |
 |---|---|---|---|---|---|
-| BM-019 | Awarded packages and execution workspace | Execution UI owner | BM-012 | `src/features/execution/` | Only assigned contractor and owner access |
-| BM-020 | Milestone timeline/status transitions | Execution UI owner | BM-019 | Execution feature | States match approved state diagrams |
-| BM-021 | Progress updates and photo evidence | Execution UI owner | BM-020, BM-004 | Execution feature/storage service | Uses documented package/milestone path and private authorization |
-| BM-022 | Change request creation/status | Execution UI owner | BM-019 | Execution feature | Captures reason/cost/time impact; no change applied without decision |
-| BM-023 | Handover request/completion | Execution UI owner | BM-020, BM-021 | Execution feature | Contractor requests only when eligible; owner confirms completion |
+| BM-019 | Awarded packages and execution workspace | Teammate 3 | BM-012 | `src/features/execution/` | Only assigned contractor and owner access |
+| BM-020 | Milestone timeline/status transitions | Teammate 3 | BM-019 | Execution feature | States match approved state diagrams |
+| BM-021 | Progress updates and photo evidence | Teammate 3 | BM-020, BM-004 | Execution feature/storage service | Uses documented package/milestone path and private authorization |
+| BM-022 | Change request creation/status | Teammate 3 | BM-019 | Execution feature | Captures reason/cost/time impact; no change applied without decision |
+| BM-023 | Handover request/completion | Teammate 3 | BM-020, BM-021 | Execution feature | Contractor requests only when eligible; owner confirms completion |
 
 ## Phase 6 — Admin module
 
 | ID | Task | Owner | Dependencies | Expected area | Acceptance criteria |
 |---|---|---|---|---|---|
-| BM-024 | Admin dashboard/moderation overview | Admin UI owner | BM-005, BM-006 | `src/features/admin/` | Admin-only route and DB authorization |
-| BM-025 | Contractor verification review/decision | Admin UI owner | BM-015, BM-024 | Admin feature | Private documents reviewable; approve/reject uses documented RPC |
-| BM-026 | Audit log/moderation views | Admin UI owner | BM-024, BM-025 | Admin feature | Audit data is read-only to client and correctly displayed |
+| BM-024 | Admin dashboard/moderation overview | Teammate 3 | BM-005, BM-006 | `src/features/admin/` | Admin-only route and DB authorization |
+| BM-025 | Contractor verification review/decision | Teammate 3 | BM-015, BM-024 | Admin feature | Private documents reviewable; approve/reject uses documented RPC |
+| BM-026 | Audit log/moderation views | Teammate 3 | BM-024, BM-025 | Admin feature | Audit data is read-only to client and correctly displayed |
 
 ## Phase 7 — Integration and QA
 

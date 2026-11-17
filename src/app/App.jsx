@@ -6,7 +6,9 @@ import { AppProviders } from './providers/AppProviders';
 export function App() {
   return (
     <AppProviders>
-      <RouterProvider router={router} />
+      <React.Suspense fallback={<div className="p-6 text-center" role="status" aria-live="polite">Loading page…</div>}>
+        <RouterProvider router={router} />
+      </React.Suspense>
     </AppProviders>
   );
 }

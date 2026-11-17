@@ -1,74 +1,36 @@
-# BuildMatch — دليل تهيئة وتشغيل قاعدة البيانات (Database Setup & Migration Guide)
+﻿# BuildMatch local database setup and migration safety
 
-يقدم هذا الدليل خطوات تفصيلية وقابلة للتكرار بنسبة 100% لتشغيل قاعدة بيانات BuildMatch محلياً عبر Supabase CLI، أو ربطها بمشروع سحابي جديد.
+## Current database evidence
 
----
+A read-only inspection of the connected BuildMatch Supabase project on 2026-11-17 reported PostgreSQL 17.12 and six applied baseline migration versions (`20261116000001` through `20261117000002`). Three later local migrations harden milestone updates, bootstrap Auth profiles, and restrict package/proposal/change-request writes. None has been applied remotely. Remote checks found direct milestone UPDATE for `anon` and `authenticated`, no Auth profile trigger, and client UPDATE grants on change requests, packages, and proposals. All three local migrations require separate PostgreSQL 17 and Production review before any project leader rollout.
 
-## 1. المتطلبات المسبقة
-- **Docker Desktop:** مثبت ويعمل محلياً (لتشغيل حاويات Supabase المحلية).
-- **Node.js:** الإصدار 20 أو 22.
-- **Supabase CLI:** يمكن استخدامه مباشرة عبر `npx supabase` أو تثبيته كأداة عامة.
+The three remote Storage buckets were confirmed private with these limits: `project-files` 25 MiB, `verification-docs` 10 MiB, and `progress-photos` 15 MiB, with the configured MIME lists in the storage migration. Dashboard Auth settings were not inspected.
 
----
+## Safe local database regression tests
 
-## 2. خطوات التشغيل المحلي (Local Supabase Development)
+Install PostgreSQL 17 locally and make its binaries available on `PATH`, or set `PG_BIN` in the current PowerShell session:
 
-### 1. بدء خدمات Supabase المحلية:
-```bash
-npx supabase start
-```
-عند نجاح الأمر، ستظهر بيانات الاتصال المحلية:
-- **API URL:** `http://localhost:54321`
-- **DB URL:** `postgresql://postgres:postgres@localhost:54322/postgres`
-- **Studio URL:** `http://localhost:54323` (لوحة تحكم محلية متكاملة)
-- **Anon Key:** مفتاح عام مخصص للبيئة المحلية.
-- **Service Role Key:** للاختبارات فقط داخل الحاويات.
-
-### 2. تطبيق الهجرات بالترتيب (Run Migrations):
-يقوم Supabase بتطبيق الهجرات تلقائياً بترتيب أسمائها الزمنية داخل مجلد `supabase/migrations/`:
-```bash
-# تطبيق أي هجرات جديدة
-npx supabase migration up
+```powershell
+$env:PG_BIN = 'C:\Program Files\PostgreSQL\17\bin'
+npm run test:db
 ```
 
-الهجرات المطبقة هي:
-1. `20261116000001_initial_schema.sql` (الجداول الـ 15 والقيود والتريجرات)
-2. `20261116000002_rls_policies.sql` (سياسات الأمان RLS)
-3. `20261116000003_functions_and_rpc.sql` (دوال الترسية والتحكم RPC)
-4. `20261116000004_storage_buckets.sql` (باكت التخزين وسياسات الملفات)
+The test runner uses a dedicated local cluster at `.pgdata_test` and port 5433 by default. It verifies the running server's data directory equals the configured test directory before dropping the fixed test database `buildmatch_real_test`. If the data directory does not match, the test stops before destructive database setup. Do not configure `PG_PORT` or `PG_DATA_DIR` for a shared or remote database.
 
-### 3. تحميل بيانات الاختبار التجريبية (Apply Seed Data):
-```bash
-npx supabase db reset
-```
-أمر `db reset` يقوم بإعادة إنشاء قاعدة البيانات من الصفر، وتطبيق كافة الهجرات الأربع، ثم تطبيق ملف `supabase/seed/seed.sql` تلقائياً.
+The test suite applies all nine checked-in migrations and seed data in two clean local cycles. It tests Auth profile bootstrap/backfill, business and milestone privileges, RLS boundaries, RPC grants, transitions/locking, Storage access, and migration behavior. This standalone PostgreSQL 18.6 harness does not establish PostgreSQL 17 compatibility, emulate Auth email delivery, or prove remote dashboard configuration.
 
-### 4. تشغيل اختبارات تأكيد السلامة (Database Integrity Tests):
-```bash
-# تشغيل ملف فحص الجداول وسياسات الأمان
-npx supabase db execute --file supabase/tests/database_test.sql
+Other local checks:
+
+```powershell
+npm test
+npm run lint
+npm run build
 ```
 
----
+## Migration ownership and rollback review
 
-## 3. ربط ونشر التغييرات على سحابة Supabase السحابية (Cloud Deployment)
+The project leader owns all migration, RLS, RPC, privilege, and Storage policy changes. Teammates should use the documented service contracts and request a shared change when the schema is insufficient. Review a new migration and its regression tests before requesting any remote action. Never run a remote `db push`, linked migration command, or Production SQL as part of local setup.
 
-عند إنشاء مشروع حقيقي على سحابة Supabase (مثل: `buildmatch-prod`):
+The Auth profile bootstrap migration is repeatable: it replaces its trigger function, recreates its trigger, and backfills only missing profiles for supported self-service roles. If a reviewed rollback is required, the trigger can be dropped and the bootstrap function removed; keep the fixed `search_path` on `handle_updated_at` as defense-in-depth. The milestone and business-write migrations require separately reviewed rollback plans because restoring direct client UPDATE would reopen status/decision write paths.
 
-1. **تسجيل الدخول في Supabase CLI:**
-   ```bash
-   npx supabase login
-   ```
-2. **ربط المستودع بمشروع السحابة:**
-   ```bash
-   npx supabase link --project-ref your-project-ref
-   ```
-3. **دفع الهجرات للسحابة بأمان:**
-   ```bash
-   npx supabase db push
-   ```
-4. **تحديث متغيرات البيئة في `.env`:**
-   ```env
-   VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-actual-anon-key
-   ```
+For exact migration inventory and readiness limitations, see [`docs/09-integration/INTEGRATION-READINESS-REPORT.md`](../09-integration/INTEGRATION-READINESS-REPORT.md).

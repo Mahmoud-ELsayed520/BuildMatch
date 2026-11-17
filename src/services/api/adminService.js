@@ -29,6 +29,9 @@ export const adminService = {
       supabase.from('project_packages').select('id, status', { count: 'exact' }),
     ]);
 
+    const failure = [projectsRes, contractorsRes, packagesRes].find((result) => result.error);
+    if (failure) throw failure.error;
+
     return {
       totalProjects: projectsRes.count || 0,
       totalContractors: contractorsRes.count || 0,
@@ -39,7 +42,7 @@ export const adminService = {
   async getAuditLogs(limit = 50) {
     const { data, error } = await supabase
       .from('audit_logs')
-      .select('*, profiles:actor_id(full_name, role)')
+      .select('*, actor:profiles!audit_logs_actor_id_fkey(full_name, role)')
       .order('created_at', { ascending: false })
       .limit(limit);
 

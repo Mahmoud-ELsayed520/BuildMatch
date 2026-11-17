@@ -1,7 +1,6 @@
 # BuildMatch — Team Implementation Handoff Guide
 
-> **Important Note on Module Allocation:**  
-> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
+**Current ownership:** Teammate 1 owns Landowner BM-008-BM-013; Teammate 2 owns Contractor BM-014-BM-018; Teammate 3 owns Execution/Admin BM-019-BM-026. The project leader owns shared foundation and integration. These are the current assignments and replace the preliminary module-selection note in this pre-implementation document.
 
 **Date:** 2026-11-16  
 **DEPI Track:** React Front-End Development  
@@ -15,12 +14,9 @@
 
 - **System Analysis & Design (SAD):** 100% complete, fully verified, and archived in `docs/03-system-design/` (22 master documents, 35 editable Mermaid diagrams, and completion report).
 - **DEPI Pre-Implementation Documentation Pack:** Integrated and validated across all project management, requirements, UI/UX, and teamwork directories.
-- **Integration Target:** All pre-implementation documentation changes target `develop` via reviewed Pull Request.
+- **Integration Target:** Feature pull requests target `develop` and require project leader review. Shared changes are coordinated separately by the project leader.
 - **Quality & Test Validation:**
-  - ESLint: 0 errors, 0 warnings.
-  - Vitest Unit Tests: 2 test suites passed.
-  - Production Build (Vite 5): Successful compilation.
-  - Database Security Harness: 13/13 test cases verified on native PostgreSQL.
+  - Latest local evidence is recorded in `docs/09-integration/INTEGRATION-READINESS-REPORT.md` and reflects current checks; use that report rather than the historical figures in this handoff.
 
 ---
 
@@ -48,27 +44,24 @@ The team consists of four members on the DEPI React track:
    - Supabase database schema, versioned migrations, RLS policies, RPC functions, and storage configurations.
    - Master Figma design system and UI/UX direction.
    - Code reviews, pull-request verification, and merge approvals into `develop` and `main`.
-2. **Member 2 (Front-End Engineer):**
-   - Implements one of the three core frontend modules upon team selection.
-3. **Member 3 (Front-End Engineer):**
-   - Implements one of the three core frontend modules upon team selection.
-4. **Member 4 (Front-End Engineer):**
-   - Implements one of the three core frontend modules upon team selection.
+2. **Teammate 1 (Front-End Engineer):** Owns Landowner BM-008-BM-013 in `src/features/landowner/`.
+3. **Teammate 2 (Front-End Engineer):** Owns Contractor BM-014-BM-018 in `src/features/contractor/`.
+4. **Teammate 3 (Front-End Engineer):** Owns Execution/Admin BM-019-BM-026 in `src/features/execution/` and `src/features/admin/`.
 
 ---
 
-## 4. Module Selection Process
+## 4. Assigned Frontend Workstreams
 
-The team must formally select and confirm module responsibilities among Member 2, Member 3, and Member 4 at the implementation handoff gate. The available MVP frontend workstreams are:
+The current workstream owners and task IDs are:
 
-1. **Landowner Module (`src/features/landowner/` | Branch: `feat/landowner-module`):**
+1. **Teammate 1 — Landowner (`src/features/landowner/` | Branch: `feat/landowner-module`, BM-008-BM-013):**
    - Owner dashboard, project drafting and publication, work package breakdown, proposal comparison matrix, and atomic contractor selection UI.
-2. **Contractor Module (`src/features/contractor/` | Branch: `feat/contractor-module`):**
+2. **Teammate 2 — Contractor (`src/features/contractor/` | Branch: `feat/contractor-module`, BM-014-BM-018):**
    - Contractor profile and KYC document upload UI, package discovery and search filters, itemized BOQ proposal creation, and proposal management.
-3. **Execution & Admin Module (`src/features/execution/` & `src/features/admin/` | Branches: `feat/execution-module`, `feat/admin-module`):**
+3. **Teammate 3 — Execution & Admin (`src/features/execution/` & `src/features/admin/` | Branches: `feat/execution-module`, `feat/admin-module`, BM-019-BM-026):**
    - Awarded package execution workspace, milestone progress tracking, photo evidence upload, change request approval flows, package handover, and admin verification/moderation dashboard.
 
-*Note: Once chosen by the team, the allocation must be recorded in `docs/08-team-work/task-allocation-matrix.md`.*
+See `docs/08-team-work/task-allocation-matrix.md` and `docs/09-integration/TEAM-INTEGRATION-HANDOFF.md` for API dependencies, current screen gaps, and acceptance criteria.
 
 ---
 
@@ -104,16 +97,18 @@ All development follows a disciplined GitFlow feature branch model:
 ### Core Branching Rules:
 1. **Never commit directly to `main` or `develop`.**
 2. Always create feature branches off the latest synchronized `develop`:
-   ```bash
-   git checkout develop
-   git pull origin develop
-   git checkout -b feat/your-feature-name
+   ```powershell
+   git fetch origin
+   git switch develop
+   git pull --ff-only origin develop
+   git switch -c feat/your-feature-name
    ```
 3. Keep commits atomic, using Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`).
 4. Run validation checks before pushing:
    ```bash
    npm run lint
-   npm run test
+   npm test
+   npm run test:db
    npm run build
    ```
 5. Open a Pull Request targeting `develop`. Every PR requires review and approval by the Project Leader before merging.
@@ -127,8 +122,8 @@ Before writing any feature code, the team must verify the following:
 
 - [ ] Every member installs local dependencies (`npm install`) and verifies local development server starts (`npm run dev`).
 - [ ] Every member verifies `npm run lint` and `npm run test` execute cleanly locally.
-- [ ] Member 2, Member 3, and Member 4 select and confirm their module responsibilities.
-- [ ] The module allocations are recorded in `docs/08-team-work/task-allocation-matrix.md`.
+- [ ] The project leader maps the Teammate 1/2/3 labels to team member names and shares the assigned task list.
+- [ ] Each teammate starts from the latest `develop` in a clean working tree; do not carry another person's changes into a branch.
 - [ ] Each member reviews the verified Figma file (`https://www.figma.com/design/oNUAk7viZgNJ82x8B92wqn`) and developer handoff guidelines (`docs/04-ui-ux/figma-handoff-checklist.md`).
 - [ ] Each member reviews the API & data contracts (`docs/03-system-design/16-api-and-integration-design.md`).
 - [ ] The feature branches (`feat/*`) are verified as synchronized with the latest `develop` commit.
@@ -138,6 +133,6 @@ Before writing any feature code, the team must verify the following:
 
 ## 8. Explicit Implementation Boundary
 
-**Work remains halted at the Pre-Implementation / Team Handoff gate until the checklist items above are confirmed.**
+**The shared foundation is available in this local checkout; use the latest `origin/develop` after the project leader's verified release.** At this handoff review, feature branch refs lag the local `develop` baseline. Team members should start from a clean tree on the updated `develop`, then work only within assigned directories and use the current integration contracts.
 
-No feature implementation code in `src/features/` should be merged into `develop` until team module selection is complete and authorized by the Project Leader.
+The project leader retains review of shared services, Auth, routing, migrations, RLS, RPCs, and Storage policy changes. Feature PRs must not modify those boundaries independently.

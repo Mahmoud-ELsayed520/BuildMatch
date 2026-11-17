@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import App from './App';
 
 describe('BuildMatch Root Application', () => {
-  it('renders application brand title on home route', () => {
+  it('renders application brand title on home route', async () => {
     render(<App />);
-    const brandElements = screen.getAllByText(/BuildMatch/i);
-    expect(brandElements.length).toBeGreaterThan(0);
+    await waitFor(() => {
+      const brandElements = screen.getAllByText(/BuildMatch/i);
+      expect(brandElements.length).toBeGreaterThan(0);
+    });
   });
 });

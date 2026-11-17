@@ -8,36 +8,17 @@ export const authService = {
       options: {
         data: {
           full_name: fullName,
-          role: role,
+          role,
+          phone,
+          city,
+          ...(role === 'contractor' ? { business_name: fullName } : {}),
         },
       },
     });
 
     if (authError) throw authError;
-
-    // Insert profile record
-    if (authData?.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: authData.user.id,
-        role,
-        full_name: fullName,
-        phone,
-        city,
-      });
-
-      if (profileError) throw profileError;
-
-      // If contractor, initialize contractor profile
-      if (role === 'contractor') {
-        const { error: cpError } = await supabase.from('contractor_profiles').insert({
-          id: authData.user.id,
-          business_name: fullName,
-          verification_status: 'pending',
-        });
-        if (cpError) throw cpError;
-      }
-    }
-
+    // Database trigger creates profiles atomically, including when confirmation
+    // settings mean signUp returns a user without an authenticated session.
     return authData;
   },
 
@@ -63,9 +44,10 @@ export const authService = {
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    if (!data) return null;
     return { ...user, profile: data };
   },
 };

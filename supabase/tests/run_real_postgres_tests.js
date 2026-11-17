@@ -2,7 +2,7 @@
  * BuildMatch Real PostgreSQL Migration & Security Integration Test Runner
  *
  * Requirements:
- * 1. Executes all 4 SQL migrations + seed on a genuine local PostgreSQL instance without skipping statements.
+ * 1. Executes all 9 SQL migrations + seed on a genuine local PostgreSQL instance without skipping statements.
  * 2. Does NOT contaminate function privileges: verifies native PostgreSQL function grants via has_function_privilege().
  * 3. Tests real concurrent selection using separate PostgreSQL connections and transactions.
  * 4. Tests high-value authorization rules: anonymous denial, multi-tenant storage, KYC privacy, and role protections.
@@ -121,10 +121,20 @@ async function ensureServerRunning(pgBin) {
 
   try {
     await testClient.connect();
+    const { rows } = await testClient.query('SHOW data_directory;');
+    const actualDataDir = path.resolve(rows[0].data_directory).toLowerCase();
+    const expectedDataDir = path.resolve(TEST_DATA_DIR).toLowerCase();
+    if (actualDataDir !== expectedDataDir) {
+      throw new Error(`Refusing to use PostgreSQL outside the isolated test cluster. Expected ${expectedDataDir}, connected to ${actualDataDir}.`);
+    }
     await testClient.end();
-    console.log(`[PostgreSQL Runner] Connected to existing server on port ${TEST_PORT}.`);
+    console.log(`[PostgreSQL Runner] Connected to isolated test cluster on port ${TEST_PORT}.`);
     return null;
   } catch (err) {
+    if (err.message?.startsWith('Refusing to use PostgreSQL outside')) {
+      await testClient.end().catch(() => {});
+      throw err;
+    }
     // Server is not yet running on port; proceed to start it
     void err;
   }
@@ -323,6 +333,12 @@ async function executeMigrationCycle(cycleNumber) {
 
   try {
     await setupSupabaseShim(client);
+    // Existing Auth identities without app profiles exercise migration backfill.
+    await client.query(`
+      INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES
+        ('00000000-0000-0000-0000-000000000060', 'legacy-contractor@buildmatch.local', '{"role":"contractor","full_name":"Legacy Contractor","city":"Giza"}'),
+        ('00000000-0000-0000-0000-000000000061', 'legacy-admin@buildmatch.local', '{"role":"admin","full_name":"Legacy Admin"}');
+    `);
     await runMigrationFile(client, '20261116000001_initial_schema.sql');
     await runMigrationFile(client, '20261116000002_rls_policies.sql');
     await runMigrationFile(client, '20261116000003_functions_and_rpc.sql');
@@ -330,8 +346,13 @@ async function executeMigrationCycle(cycleNumber) {
     await runMigrationFile(client, '20261117000001_fix_rpc_authorization.sql');
     await runMigrationFile(client, '20261117000002_set_view_security_invoker.sql');
     await grantPostgrestTablePrivileges(client);
+    // Simulate legacy independent column ACLs to verify migration 07 revokes them too.
+    await client.query('GRANT UPDATE (status, title) ON public.milestones TO anon, authenticated;');
+    await runMigrationFile(client, '20261117000003_limit_milestone_status_updates.sql');
+    await runMigrationFile(client, '20261117175421_auth_profile_bootstrap.sql');
+    await runMigrationFile(client, '20261117181620_harden_business_update_paths.sql');
     await runSeedFile(client);
-    console.log(`\n✓ [MIGRATION RUN #${cycleNumber} SUCCESS]: All 6 migrations and seed applied with ZERO skipped statements!`);
+    console.log(`\n✓ [MIGRATION RUN #${cycleNumber} SUCCESS]: All 9 migrations and seed applied with ZERO skipped statements!`);
   } finally {
     await client.end();
   }
@@ -393,17 +414,86 @@ async function runRealSecurityTests() {
   const PROJECT_ID = '11111111-1111-1111-1111-111111111111';
   const PKG1_ID = '22222222-2222-2222-2222-222222222221';
   const PROP1_APPROVED = '33333333-3333-3333-3333-333333333331';
+  const MILESTONE_POLICY_PACKAGE_ID = '22222222-2222-2222-2222-222222222298';
+  const MILESTONE_PENDING_ID = '44444444-4444-4444-4444-444444444498';
+  const MILESTONE_REVIEW_ID = '44444444-4444-4444-4444-444444444497';
+  const MILESTONE_CONCURRENCY_ID = '44444444-4444-4444-4444-444444444496';
+  const MILESTONE_ADMIN_ID = '44444444-4444-4444-4444-444444444495';
+  const OTHER_PROJECT_ID = '11111111-1111-1111-1111-111111111199';
+  const OTHER_PACKAGE_ID = '22222222-2222-2222-2222-222222222297';
+  const OTHER_MILESTONE_ID = '44444444-4444-4444-4444-444444444494';
+
+  async function seedMilestone(id, sequence, status, assignedContractorId = CONTRACTOR1_APPROVED) {
+    const assignedContractorSql = assignedContractorId ? `'${assignedContractorId}'` : 'NULL';
+    await client.query(`
+      INSERT INTO public.project_packages (id, project_id, title, category, description, scope_of_work, status, assigned_contractor_id)
+      VALUES ('${MILESTONE_POLICY_PACKAGE_ID}', '${PROJECT_ID}', 'Milestone security test', 'masonry', 'Test package', 'Test scope', 'in_progress', ${assignedContractorSql})
+      ON CONFLICT (id) DO UPDATE SET assigned_contractor_id = EXCLUDED.assigned_contractor_id, status = 'in_progress';
+      INSERT INTO public.milestones (id, package_id, title, description, sequence_order, status, submitted_at, approved_at, rework_notes)
+      VALUES ('${id}', '${MILESTONE_POLICY_PACKAGE_ID}', 'Security test milestone', 'Fixture', ${sequence}, '${status}', NULL, NULL, NULL)
+      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, submitted_at = NULL, approved_at = NULL, rework_notes = NULL;
+    `);
+  }
 
   // Seed contractor 3 for multi-bidder scenarios
   await client.query(`
-    INSERT INTO auth.users (id, email) VALUES ('${CONTRACTOR3_APPROVED}', 'contractor3@buildmatch.local') ON CONFLICT DO NOTHING;
+    INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES ('${CONTRACTOR3_APPROVED}', 'contractor3@buildmatch.local', '{"role":"contractor","full_name":"Contractor Three"}') ON CONFLICT DO NOTHING;
     INSERT INTO public.profiles (id, role, full_name, phone, city)
     VALUES ('${CONTRACTOR3_APPROVED}', 'contractor', 'م. حسام الدين (شركة التعمير)', '+201000000005', 'Cairo')
     ON CONFLICT DO NOTHING;
     INSERT INTO public.contractor_profiles (id, business_name, bio, specializations, years_of_experience, verification_status)
     VALUES ('${CONTRACTOR3_APPROVED}', 'شركة التعمير الهندسية', 'مقاولات عامة', ARRAY['concrete_skeleton'], 10, 'approved')
-    ON CONFLICT DO NOTHING;
+    ON CONFLICT (id) DO UPDATE SET verification_status = 'approved';
   `);
+
+  await test('Auth Profiles: Signup trigger creates supported profiles without granting admin self-registration', async () => {
+    const contractor = await client.query(`
+      SELECT p.role, p.full_name, p.city, cp.business_name, cp.verification_status
+      FROM public.profiles p JOIN public.contractor_profiles cp ON cp.id = p.id
+      WHERE p.id = '00000000-0000-0000-0000-000000000060';
+    `);
+    const legacyAdmin = await client.query(`SELECT id FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000061';`);
+    if (contractor.rows.length !== 1 || contractor.rows[0].role !== 'contractor'
+      || contractor.rows[0].full_name !== 'Legacy Contractor' || contractor.rows[0].city !== 'Giza'
+      || contractor.rows[0].business_name !== 'Legacy Contractor' || contractor.rows[0].verification_status !== 'pending') {
+      throw new Error('Legacy contractor profile was not safely backfilled with pending verification');
+    }
+    if (legacyAdmin.rows.length !== 0) throw new Error('Legacy admin metadata must not create a self-assigned profile');
+
+    await client.query(`
+      INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES
+        ('00000000-0000-0000-0000-000000000050', 'new-contractor@buildmatch.local', '{"role":"contractor","full_name":"New Contractor","city":"Cairo"}'),
+        ('00000000-0000-0000-0000-000000000051', 'attempted-admin@buildmatch.local', '{"role":"admin","full_name":"Attempted Admin"}');
+    `);
+    const newContractor = await client.query(`
+      SELECT p.role, cp.verification_status FROM public.profiles p
+      JOIN public.contractor_profiles cp ON cp.id = p.id
+      WHERE p.id = '00000000-0000-0000-0000-000000000050';
+    `);
+    const attemptedAdmin = await client.query(`SELECT role FROM public.profiles WHERE id = '00000000-0000-0000-0000-000000000051';`);
+    if (newContractor.rows.length !== 1 || newContractor.rows[0].role !== 'contractor'
+      || newContractor.rows[0].verification_status !== 'pending') {
+      throw new Error('Auth signup trigger did not create a pending contractor profile');
+    }
+    if (attemptedAdmin.rows.length !== 1 || attemptedAdmin.rows[0].role !== 'landowner') {
+      throw new Error('User-controlled Auth metadata assigned an administrative profile');
+    }
+  });
+
+  await test('Auth Trigger Security: Bootstrap function is not directly executable by API roles and timestamp path is fixed', async () => {
+    const fn = 'public.handle_new_auth_user()';
+    for (const role of ['anon', 'authenticated', 'service_role']) {
+      const { rows } = await client.query(`SELECT has_function_privilege('${role}', '${fn}', 'EXECUTE') AS can_exec;`);
+      if (rows[0].can_exec) throw new Error(`Auth trigger function is directly executable by ${role}`);
+    }
+    const { rows } = await client.query(`
+      SELECT p.proconfig FROM pg_proc p
+      WHERE p.oid = 'public.handle_updated_at()'::regprocedure;
+    `);
+    if (!rows[0].proconfig?.some((setting) => setting.startsWith('search_path='))) {
+      throw new Error('handle_updated_at must have a fixed search_path');
+    }
+  });
 
   // ----------------------------------------------------------------------------
   // GROUP 1: FUNCTION PRIVILEGE CHECKS (Verifying migrations without test contamination)
@@ -414,7 +504,9 @@ async function runRealSecurityTests() {
       'public.admin_verify_contractor(uuid, text, text)',
       'public.request_package_handover(uuid)',
       'public.approve_package_completion(uuid)',
-      'public.decide_change_request(uuid, text, text)'
+      'public.decide_change_request(uuid, text, text)',
+      'public.publish_project_package(uuid)',
+      'public.withdraw_proposal(uuid)'
     ];
 
     for (const fn of sensitiveFunctions) {
@@ -427,6 +519,10 @@ async function runRealSecurityTests() {
       if (authRes.rows[0].can_exec !== true) {
         throw new Error(`CONFIGURATION ERROR: Function ${fn} should be executable by authenticated role!`);
       }
+      if (fn.includes('publish_project_package') || fn.includes('withdraw_proposal')) {
+        const serviceRes = await client.query(`SELECT has_function_privilege('service_role', '${fn}', 'EXECUTE') AS can_exec;`);
+        if (serviceRes.rows[0].can_exec) throw new Error(`Trusted RPC ${fn} should not be directly executable by service_role`);
+      }
     }
 
     // Public lookup function MUST be executable by anon and authenticated
@@ -435,6 +531,136 @@ async function runRealSecurityTests() {
     if (pubResAnon.rows[0].can_exec !== true || pubResAuth.rows[0].can_exec !== true) {
       throw new Error('Public contractor profile function must be executable by anon and authenticated');
     }
+  });
+
+  await test('Business Update Privileges: Client writes are column-limited and decision fields are RPC-only', async () => {
+    for (const role of ['anon', 'authenticated']) {
+      for (const table of ['change_requests', 'project_packages', 'proposals']) {
+        const { rows } = await client.query(`SELECT has_table_privilege('${role}', 'public.${table}', 'UPDATE') AS can_update;`);
+        if (rows[0].can_update) throw new Error(`${role} still has table-level UPDATE on ${table}`);
+      }
+    }
+    const { rows: publicTableUpdate } = await client.query(`
+      SELECT count(*)::int AS count
+      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace,
+        LATERAL aclexplode(c.relacl) acl
+      WHERE n.nspname = 'public' AND c.relname IN ('change_requests', 'project_packages', 'proposals')
+        AND acl.grantee = 0 AND acl.privilege_type = 'UPDATE';
+    `);
+    const { rows: publicColumnUpdate } = await client.query(`
+      SELECT count(*)::int AS count
+      FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace,
+        LATERAL aclexplode(a.attacl) acl
+      WHERE n.nspname = 'public' AND c.relname IN ('change_requests', 'project_packages', 'proposals')
+        AND a.attnum > 0 AND NOT a.attisdropped AND acl.grantee = 0 AND acl.privilege_type = 'UPDATE';
+    `);
+    if (publicTableUpdate[0].count !== 0 || publicColumnUpdate[0].count !== 0) {
+      throw new Error('PUBLIC retains direct table or column UPDATE privileges on protected business tables');
+    }
+
+    const checks = [
+      ['anon', 'milestones', 'id', 'UPDATE', false],
+      ['authenticated', 'milestones', 'status', 'UPDATE', false],
+      ['service_role', 'milestones', 'status', 'UPDATE', true],
+      ['authenticated', 'project_packages', 'title', 'UPDATE', true],
+      ['authenticated', 'project_packages', 'status', 'UPDATE', false],
+      ['authenticated', 'project_packages', 'assigned_contractor_id', 'UPDATE', false],
+      ['anon', 'project_packages', 'title', 'UPDATE', false],
+      ['authenticated', 'project_packages', 'title', 'INSERT', true],
+      ['authenticated', 'project_packages', 'status', 'INSERT', false],
+      ['authenticated', 'proposals', 'total_price', 'UPDATE', true],
+      ['authenticated', 'proposals', 'status', 'UPDATE', false],
+      ['authenticated', 'proposals', 'submitted_at', 'INSERT', false],
+      ['authenticated', 'change_requests', 'status', 'UPDATE', false],
+    ];
+    for (const [role, table, column, privilege, expected] of checks) {
+      const { rows } = await client.query(`SELECT has_column_privilege('${role}', 'public.${table}', '${column}', '${privilege}') AS allowed;`);
+      if (rows[0].allowed !== expected) throw new Error(`${role} ${privilege} on ${table}.${column} expected ${expected}, got ${rows[0].allowed}`);
+    }
+    for (const table of ['change_requests', 'project_packages', 'proposals']) {
+      const { rows } = await client.query(`SELECT has_table_privilege('service_role', 'public.${table}', 'UPDATE') AS allowed;`);
+      if (!rows[0].allowed) throw new Error(`Trusted service_role UPDATE was not retained on ${table}`);
+    }
+    const { rows: insertRows } = await client.query(`
+      SELECT has_table_privilege('authenticated', 'public.change_requests', 'INSERT') AS change_insert,
+        has_table_privilege('authenticated', 'public.project_packages', 'SELECT') AS package_select,
+        has_table_privilege('authenticated', 'public.proposals', 'SELECT') AS proposal_select;
+    `);
+    if (!insertRows[0].change_insert || !insertRows[0].package_select || !insertRows[0].proposal_select) {
+      throw new Error('Required request INSERT or business-object SELECT privileges were removed');
+    }
+  });
+
+  await test('Package Publication: Direct status/assignment writes fail and owner RPC publishes drafts', async () => {
+    const packageId = '22222222-2222-2222-2222-222222222296';
+    await client.query(`
+      INSERT INTO public.project_packages (id, project_id, title, category, description, scope_of_work)
+      VALUES ('${packageId}', '${PROJECT_ID}', 'Hardened package', 'masonry', 'Package test', 'Test scope')
+      ON CONFLICT (id) DO UPDATE SET status = 'draft', assigned_contractor_id = NULL, assigned_proposal_id = NULL;
+    `);
+
+    let directWriteDenied = false;
+    try {
+      await asUser(LANDOWNER_ID, 'authenticated', () => client.query(`
+        UPDATE public.project_packages
+        SET status = 'assigned', assigned_contractor_id = '${CONTRACTOR1_APPROVED}'
+        WHERE id = '${packageId}';
+      `));
+    } catch (err) { directWriteDenied = err.code === '42501'; }
+    if (!directWriteDenied) throw new Error('Direct package status/assignment UPDATE was not blocked');
+
+    const published = await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+      `SELECT (public.publish_project_package('${packageId}')).status AS status;`
+    ));
+    if (published.rows[0]?.status !== 'open') throw new Error('Project owner could not publish a draft through the RPC');
+
+    let unrelatedUserDenied = false;
+    try {
+      await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+        `SELECT public.publish_project_package('${packageId}');`
+      ));
+    } catch (err) { unrelatedUserDenied = err.code === '42501'; }
+    if (!unrelatedUserDenied) throw new Error('Unrelated contractor published a project package');
+  });
+
+  await test('Proposal Lifecycle: Accepted proposals are immutable and contractor withdrawal uses its RPC', async () => {
+    const packageId = '22222222-2222-2222-2222-222222222296';
+    const acceptedId = '33333333-3333-3333-3333-333333333394';
+    const submittedId = '33333333-3333-3333-3333-333333333393';
+    await client.query(`
+      INSERT INTO public.proposals (id, package_id, contractor_id, total_price, proposed_duration_days, scope_summary, payment_schedule_terms, status)
+      VALUES
+        ('${acceptedId}', '${packageId}', '${CONTRACTOR1_APPROVED}', 10000, 10, 'Accepted bid', 'Terms', 'accepted'),
+        ('${submittedId}', '${packageId}', '${CONTRACTOR3_APPROVED}', 12000, 12, 'Submitted bid', 'Terms', 'submitted')
+      ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status;
+    `);
+
+    const acceptedUpdate = await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(`
+      UPDATE public.proposals SET total_price = 1 WHERE id = '${acceptedId}' RETURNING id;
+    `));
+    if (acceptedUpdate.rows.length !== 0) throw new Error('Contractor changed an accepted proposal');
+
+    let directStatusDenied = false;
+    try {
+      await asUser(CONTRACTOR3_APPROVED, 'authenticated', () => client.query(`
+        UPDATE public.proposals SET status = 'withdrawn' WHERE id = '${submittedId}';
+      `));
+    } catch (err) { directStatusDenied = err.code === '42501'; }
+    if (!directStatusDenied) throw new Error('Contractor changed proposal status outside the withdrawal RPC');
+
+    const withdrawn = await asUser(CONTRACTOR3_APPROVED, 'authenticated', () => client.query(
+      `SELECT (public.withdraw_proposal('${submittedId}')).status AS status;`
+    ));
+    if (withdrawn.rows[0]?.status !== 'withdrawn') throw new Error('Contractor could not withdraw their submitted proposal');
+
+    let wrongOwnerDenied = false;
+    try {
+      await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+        `SELECT public.withdraw_proposal('${submittedId}');`
+      ));
+    } catch (err) { wrongOwnerDenied = err.code === '42501'; }
+    if (!wrongOwnerDenied) throw new Error('A different contractor withdrew this proposal');
   });
 
   // ----------------------------------------------------------------------------
@@ -521,6 +747,336 @@ async function runRealSecurityTests() {
     if (!threw) throw new Error('Expected check constraint failure for role "super_admin_hacker"');
   });
 
+  await test('Milestone Privileges: Exact table, column, SELECT/INSERT, and RPC grants', async () => {
+    const privileges = await client.query(`
+      WITH columns AS (
+        SELECT attname
+        FROM pg_attribute
+        WHERE attrelid = 'public.milestones'::regclass
+          AND attnum > 0 AND NOT attisdropped
+      ), relation_acl AS (
+        SELECT COALESCE(bool_or(acl.grantee = 0 AND acl.privilege_type = 'UPDATE'), false) AS public_table_update
+        FROM pg_class c
+        CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) acl
+        WHERE c.oid = 'public.milestones'::regclass
+      ), column_acl AS (
+        SELECT
+          count(*) FILTER (WHERE acl.grantee = 0 AND acl.privilege_type = 'UPDATE') AS public_column_acl_updates,
+          count(*) FILTER (WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'anon') AND acl.privilege_type = 'UPDATE') AS anon_column_acl_updates,
+          count(*) FILTER (WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'authenticated') AND acl.privilege_type = 'UPDATE') AS auth_column_acl_updates,
+          count(*) FILTER (WHERE acl.grantee = (SELECT oid FROM pg_roles WHERE rolname = 'service_role') AND acl.privilege_type = 'UPDATE') AS service_column_acl_updates
+        FROM pg_attribute a
+        CROSS JOIN LATERAL aclexplode(a.attacl) acl
+        WHERE a.attrelid = 'public.milestones'::regclass
+          AND a.attnum > 0 AND NOT a.attisdropped
+      )
+      SELECT relation_acl.public_table_update,
+             has_table_privilege('anon', 'public.milestones', 'UPDATE') AS anon_table_update,
+             has_table_privilege('authenticated', 'public.milestones', 'UPDATE') AS auth_table_update,
+             has_table_privilege('service_role', 'public.milestones', 'UPDATE') AS service_table_update,
+             column_acl.*,
+             (SELECT count(*) FROM columns WHERE has_column_privilege('anon', 'public.milestones', attname, 'UPDATE')) AS anon_effective_column_updates,
+             (SELECT count(*) FROM columns WHERE has_column_privilege('authenticated', 'public.milestones', attname, 'UPDATE')) AS auth_effective_column_updates,
+             (SELECT count(*) FROM columns WHERE has_column_privilege('service_role', 'public.milestones', attname, 'UPDATE')) AS service_effective_column_updates,
+             has_table_privilege('anon', 'public.milestones', 'SELECT') AS anon_select,
+             has_table_privilege('anon', 'public.milestones', 'INSERT') AS anon_insert,
+             has_table_privilege('authenticated', 'public.milestones', 'SELECT') AS auth_select,
+             has_table_privilege('authenticated', 'public.milestones', 'INSERT') AS auth_insert,
+             has_table_privilege('service_role', 'public.milestones', 'SELECT') AS service_select,
+             has_table_privilege('service_role', 'public.milestones', 'INSERT') AS service_insert,
+             has_function_privilege('anon', 'public.update_milestone_status(uuid,text,text)', 'EXECUTE') AS anon_rpc,
+             has_function_privilege('authenticated', 'public.update_milestone_status(uuid,text,text)', 'EXECUTE') AS auth_rpc,
+             has_function_privilege('service_role', 'public.update_milestone_status(uuid,text,text)', 'EXECUTE') AS service_rpc,
+             proc.prosecdef AS security_definer,
+             proc.proconfig @> ARRAY['search_path=pg_catalog, public, auth, pg_temp'] AS fixed_search_path,
+             NOT EXISTS (
+               SELECT 1 FROM aclexplode(COALESCE(proc.proacl, acldefault('f', proc.proowner))) acl
+               WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+             ) AS public_rpc_revoked
+      FROM pg_proc proc
+      CROSS JOIN relation_acl
+      CROSS JOIN column_acl
+      WHERE proc.oid = 'public.update_milestone_status(uuid,text,text)'::regprocedure;
+    `);
+    const p = privileges.rows[0];
+    const columnsCount = 14;
+    if (!p || p.public_table_update || p.anon_table_update || p.auth_table_update || !p.service_table_update
+      || Number(p.public_column_acl_updates) !== 0 || Number(p.anon_column_acl_updates) !== 0 || Number(p.auth_column_acl_updates) !== 0 || Number(p.service_column_acl_updates) !== 0
+      || Number(p.anon_effective_column_updates) !== 0 || Number(p.auth_effective_column_updates) !== 0
+      || Number(p.service_effective_column_updates) !== columnsCount
+      || !p.anon_select || !p.anon_insert || !p.auth_select || !p.auth_insert || !p.service_select || !p.service_insert
+      || p.anon_rpc || !p.auth_rpc || p.service_rpc || !p.security_definer || !p.fixed_search_path || !p.public_rpc_revoked) {
+      throw new Error(`Unexpected milestone privileges: ${JSON.stringify(p)}`);
+    }
+    const publicFunctionExecute = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM aclexplode(COALESCE(proc.proacl, acldefault('f', proc.proowner))) acl
+        WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE'
+      ) AS allowed
+      FROM pg_proc proc
+      WHERE proc.oid = 'public.update_milestone_status(uuid,text,text)'::regprocedure;
+    `);
+    if (publicFunctionExecute.rows[0].allowed) throw new Error('PUBLIC retains milestone RPC EXECUTE');
+  });
+
+  await test('Milestone Authentication: Anonymous and missing-uid callers cannot transition', async () => {
+    await seedMilestone(MILESTONE_PENDING_ID, 1, 'pending');
+    for (const [uid, role] of [[null, 'anon'], [null, 'authenticated']]) {
+      let rejected = false;
+      try {
+        await asUser(uid, role, () => client.query(
+          `SELECT public.update_milestone_status('${MILESTONE_PENDING_ID}', 'in_progress', NULL);`
+        ));
+      } catch (err) { rejected = err.code === '42501'; }
+      if (!rejected) throw new Error(`Expected SQLSTATE 42501 for ${role} with no user id`);
+    }
+  });
+
+  await test('Milestone Direct Writes: Authenticated clients cannot update status or protected fields', async () => {
+    const original = await client.query(`SELECT * FROM public.milestones WHERE id = '${MILESTONE_PENDING_ID}';`);
+    for (const mutation of [
+      `status = 'approved'`,
+      `title = 'Tampered title'`,
+      `description = 'Tampered description'`,
+      `sequence_order = 9`,
+      `due_date = CURRENT_DATE`,
+      `payment_percentage = 99`,
+      `package_id = '${PKG1_ID}'`,
+    ]) {
+      let rejected = false;
+      try {
+        await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+          `UPDATE public.milestones SET ${mutation} WHERE id = '${MILESTONE_PENDING_ID}';`
+        ));
+      } catch (err) { rejected = err.code === '42501'; }
+      if (!rejected) throw new Error(`Direct milestone mutation was not denied: ${mutation}`);
+    }
+    let anonRejected = false;
+    try {
+      await asUser(null, 'anon', () => client.query(
+        `UPDATE public.milestones SET status = 'approved' WHERE id = '${MILESTONE_PENDING_ID}';`
+      ));
+    } catch (err) { anonRejected = err.code === '42501'; }
+    if (!anonRejected) throw new Error('Anonymous direct milestone UPDATE was not denied');
+    const after = await client.query(`SELECT * FROM public.milestones WHERE id = '${MILESTONE_PENDING_ID}';`);
+    if (JSON.stringify(original.rows[0]) !== JSON.stringify(after.rows[0])) throw new Error('A denied direct write changed the milestone');
+  });
+
+  await test('Milestone Contractor Flow: Start and submit valid transitions with DB timestamps', async () => {
+    const before = await client.query(`SELECT title, description, package_id, sequence_order, due_date, payment_percentage, payment_amount FROM public.milestones WHERE id = '${MILESTONE_PENDING_ID}';`);
+    const started = await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_PENDING_ID}', 'in_progress', NULL)).status AS status;`
+    ));
+    if (started.rows[0]?.status !== 'in_progress') throw new Error('Contractor start transition did not return the updated status');
+
+    const submitted = await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_PENDING_ID}', 'submitted_for_review', NULL)).status AS status;`
+    ));
+    const submissionRow = await client.query(`SELECT status, submitted_at, approved_at FROM public.milestones WHERE id = '${MILESTONE_PENDING_ID}';`);
+    if (submitted.rows[0]?.status !== 'submitted_for_review' || submissionRow.rows[0]?.submitted_at == null || submissionRow.rows[0]?.approved_at != null) {
+      throw new Error('Submission timestamps/status are incorrect');
+    }
+    const after = await client.query(`SELECT title, description, package_id, sequence_order, due_date, payment_percentage, payment_amount FROM public.milestones WHERE id = '${MILESTONE_PENDING_ID}';`);
+    if (JSON.stringify(before.rows[0]) !== JSON.stringify(after.rows[0])) throw new Error('Status RPC changed protected milestone fields');
+  });
+
+  await test('Milestone Review/Rework: Owner decisions, required notes, and contractor resume flow', async () => {
+    await seedMilestone(MILESTONE_REVIEW_ID, 2, 'submitted_for_review');
+    let blankNotesRejected = false;
+    try {
+      await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+        `SELECT public.update_milestone_status('${MILESTONE_REVIEW_ID}', 'rework_required', '   ');`
+      ));
+    } catch (err) { blankNotesRejected = err.code === '22023'; }
+    if (!blankNotesRejected) throw new Error('Rework with blank notes was not rejected with 22023');
+    const afterFailure = await client.query(`SELECT status, submitted_at, approved_at, rework_notes FROM public.milestones WHERE id = '${MILESTONE_REVIEW_ID}';`);
+    if (afterFailure.rows[0].status !== 'submitted_for_review' || afterFailure.rows[0].rework_notes !== null) throw new Error('Invalid rework partially changed milestone');
+
+    await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_REVIEW_ID}', 'rework_required', 'Please correct the finish.')).status;`
+    ));
+    const rework = await client.query(`SELECT status, rework_notes, approved_at FROM public.milestones WHERE id = '${MILESTONE_REVIEW_ID}';`);
+    if (rework.rows[0]?.status !== 'rework_required' || rework.rows[0]?.rework_notes !== 'Please correct the finish.' || rework.rows[0]?.approved_at != null) throw new Error('Owner rework decision was not recorded correctly');
+
+    await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_REVIEW_ID}', 'in_progress', NULL)).status;`
+    ));
+    const resumed = await client.query(`SELECT status, rework_notes FROM public.milestones WHERE id = '${MILESTONE_REVIEW_ID}';`);
+    if (resumed.rows[0]?.status !== 'in_progress' || resumed.rows[0]?.rework_notes !== 'Please correct the finish.') throw new Error('Resume did not preserve the rework note');
+    const resubmitted = await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_REVIEW_ID}', 'submitted_for_review', NULL)).status;`
+    ));
+    if (resubmitted.rows[0]?.status !== 'submitted_for_review') throw new Error('Contractor could not resubmit after rework');
+    await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_REVIEW_ID}', 'approved', NULL)).status;`
+    ));
+    const approved = await client.query(`SELECT status, approved_at, submitted_at FROM public.milestones WHERE id = '${MILESTONE_REVIEW_ID}';`);
+    if (approved.rows[0]?.status !== 'approved' || approved.rows[0]?.approved_at == null || approved.rows[0]?.submitted_at == null) throw new Error('Approval timestamps/status are incorrect');
+  });
+
+  await test('Milestone Authorization: Owner, unrelated user, and transition graph enforced', async () => {
+    await seedMilestone(MILESTONE_PENDING_ID, 1, 'pending');
+    for (const [uid, status] of [[LANDOWNER_ID, 'in_progress'], [STRANGER_ID, 'in_progress'], [CONTRACTOR1_APPROVED, 'approved']]) {
+      let rejected = false;
+      try {
+        await asUser(uid, 'authenticated', () => client.query(
+          `SELECT public.update_milestone_status('${MILESTONE_PENDING_ID}', '${status}', NULL);`
+        ));
+      } catch (err) { rejected = err.code === '42501'; }
+      if (!rejected) throw new Error(`${uid} unexpectedly performed ${status} from pending`);
+    }
+    let unknownRejected = false;
+    try {
+      await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+        `SELECT public.update_milestone_status('${MILESTONE_PENDING_ID}', 'queued', NULL);`
+      ));
+    } catch (err) { unknownRejected = err.code === '22023'; }
+    if (!unknownRejected) throw new Error('Unknown status did not fail with SQLSTATE 22023');
+    let missingRejected = false;
+    try {
+      await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+        `SELECT public.update_milestone_status('44444444-4444-4444-4444-444444444499', 'in_progress', NULL);`
+      ));
+    } catch (err) { missingRejected = err.code === 'P0002'; }
+    if (!missingRejected) throw new Error('Missing milestone did not fail with SQLSTATE P0002');
+
+    await seedMilestone(MILESTONE_PENDING_ID, 1, 'pending', null);
+    let unassignedPackageOwnerRejected = false;
+    try {
+      await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+        `SELECT public.update_milestone_status('${MILESTONE_PENDING_ID}', 'in_progress', NULL);`
+      ));
+    } catch (err) { unassignedPackageOwnerRejected = err.code === '42501'; }
+    if (!unassignedPackageOwnerRejected) throw new Error('Owner transitioned an unassigned package milestone through NULL role logic');
+    const unchanged = await client.query(`SELECT status FROM public.milestones WHERE id = '${MILESTONE_PENDING_ID}';`);
+    if (unchanged.rows[0]?.status !== 'pending') throw new Error('Denied unassigned milestone transition changed its status');
+  });
+
+  await test('Milestone Project Ownership: Only the actual project owner may review', async () => {
+    await client.query(`
+      INSERT INTO auth.users (id, email) VALUES ('${STRANGER_ID}', 'other-owner@buildmatch.local') ON CONFLICT DO NOTHING;
+      INSERT INTO public.profiles (id, role, full_name, city) VALUES ('${STRANGER_ID}', 'landowner', 'Other Owner', 'Cairo') ON CONFLICT (id) DO UPDATE SET role = 'landowner';
+      INSERT INTO public.projects (id, owner_id, title, description, city, land_area_sqm, floors_count, construction_type, status)
+      VALUES ('${OTHER_PROJECT_ID}', '${STRANGER_ID}', 'Other owner project', 'Test project', 'Cairo', 100, 1, 'renovation', 'draft')
+      ON CONFLICT (id) DO UPDATE SET owner_id = EXCLUDED.owner_id;
+      INSERT INTO public.project_packages (id, project_id, title, category, description, scope_of_work, status, assigned_contractor_id)
+      VALUES ('${OTHER_PACKAGE_ID}', '${OTHER_PROJECT_ID}', 'Other owner package', 'masonry', 'Test', 'Test', 'in_progress', '${CONTRACTOR1_APPROVED}')
+      ON CONFLICT (id) DO UPDATE SET project_id = EXCLUDED.project_id, assigned_contractor_id = EXCLUDED.assigned_contractor_id;
+      INSERT INTO public.milestones (id, package_id, title, description, sequence_order, status)
+      VALUES ('${OTHER_MILESTONE_ID}', '${OTHER_PACKAGE_ID}', 'Other owner review', 'Test', 1, 'submitted_for_review')
+      ON CONFLICT (id) DO UPDATE SET package_id = EXCLUDED.package_id, status = 'submitted_for_review';
+    `);
+    let unrelatedOwnerRejected = false;
+    try {
+      await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+        `SELECT public.update_milestone_status('${OTHER_MILESTONE_ID}', 'approved', NULL);`
+      ));
+    } catch (err) { unrelatedOwnerRejected = err.code === '42501'; }
+    if (!unrelatedOwnerRejected) throw new Error('A different landowner approved this project milestone');
+    const actualOwner = await asUser(STRANGER_ID, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${OTHER_MILESTONE_ID}', 'approved', NULL)).status AS status;`
+    ));
+    if (actualOwner.rows[0]?.status !== 'approved') throw new Error('The actual project owner could not approve their milestone');
+  });
+
+  await test('Milestone Contractor Review Denial: Contractor cannot approve or request rework', async () => {
+    await seedMilestone(MILESTONE_REVIEW_ID, 2, 'submitted_for_review');
+    for (const status of ['approved', 'rework_required']) {
+      let rejected = false;
+      try {
+        await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(
+          `SELECT public.update_milestone_status('${MILESTONE_REVIEW_ID}', '${status}', 'Contractor attempted review');`
+        ));
+      } catch (err) { rejected = err.code === '42501'; }
+      if (!rejected) throw new Error(`Assigned contractor performed forbidden review action: ${status}`);
+    }
+    const unchanged = await client.query(`SELECT status, rework_notes FROM public.milestones WHERE id = '${MILESTONE_REVIEW_ID}';`);
+    if (unchanged.rows[0]?.status !== 'submitted_for_review' || unchanged.rows[0]?.rework_notes !== null) throw new Error('Denied contractor review request changed the milestone');
+  });
+
+  await test('Milestone Admin: Admin may review submissions but cannot start execution', async () => {
+    await seedMilestone(MILESTONE_ADMIN_ID, 4, 'pending');
+    let startRejected = false;
+    try {
+      await asUser(ADMIN_ID, 'authenticated', () => client.query(
+        `SELECT public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'in_progress', NULL);`
+      ));
+    } catch (err) { startRejected = err.code === '42501'; }
+    if (!startRejected) throw new Error('Admin unexpectedly started contractor execution');
+    await client.query(`UPDATE public.milestones SET status = 'submitted_for_review' WHERE id = '${MILESTONE_ADMIN_ID}';`);
+    await asUser(ADMIN_ID, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'approved', NULL)).status;`
+    ));
+    const result = await client.query(`SELECT status FROM public.milestones WHERE id = '${MILESTONE_ADMIN_ID}';`);
+    if (result.rows[0]?.status !== 'approved') throw new Error('Admin review permission did not match the existing UI contract');
+  });
+
+  await test('Milestone Multi-Role: Admin assigned as contractor retains execution and review actions', async () => {
+    await client.query(`
+      INSERT INTO public.contractor_profiles (id, business_name, verification_status)
+      VALUES ('${ADMIN_ID}', 'Admin test contractor profile', 'approved')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+    await seedMilestone(MILESTONE_ADMIN_ID, 4, 'pending', ADMIN_ID);
+    await asUser(ADMIN_ID, 'authenticated', () => client.query(
+      `SELECT public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'in_progress', NULL);`
+    ));
+    await asUser(ADMIN_ID, 'authenticated', () => client.query(
+      `SELECT public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'submitted_for_review', NULL);`
+    ));
+    const approved = await asUser(ADMIN_ID, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'approved', NULL)).status AS status;`
+    ));
+    if (approved.rows[0]?.status !== 'approved') throw new Error('Admin assigned contractor lost an authorized review transition');
+
+    await seedMilestone(MILESTONE_ADMIN_ID, 4, 'pending', ADMIN_ID);
+    let invalidReviewRejected = false;
+    try {
+      await asUser(ADMIN_ID, 'authenticated', () => client.query(
+        `SELECT public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'approved', NULL);`
+      ));
+    } catch (err) { invalidReviewRejected = err.code === '42501'; }
+    if (!invalidReviewRejected) throw new Error('Admin/contractor combination bypassed the old-state transition graph');
+  });
+
+  await test('Milestone Multi-Role: Project owner also assigned as contractor retains both scoped actions', async () => {
+    await client.query(`
+      INSERT INTO public.contractor_profiles (id, business_name, verification_status)
+      VALUES ('${LANDOWNER_ID}', 'Owner test contractor profile', 'approved')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+    await seedMilestone(MILESTONE_ADMIN_ID, 4, 'pending', LANDOWNER_ID);
+    await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+      `SELECT public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'in_progress', NULL);`
+    ));
+    await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+      `SELECT public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'submitted_for_review', NULL);`
+    ));
+    const approved = await asUser(LANDOWNER_ID, 'authenticated', () => client.query(
+      `SELECT (public.update_milestone_status('${MILESTONE_ADMIN_ID}', 'approved', NULL)).status AS status;`
+    ));
+    if (approved.rows[0]?.status !== 'approved') throw new Error('Owner/contractor combination lost one of its authorized actions');
+  });
+
+  await test('Milestone Concurrency: Conflicting submissions serialize under row lock', async () => {
+    await seedMilestone(MILESTONE_CONCURRENCY_ID, 3, 'in_progress');
+    const clientA = new Client({ host: '127.0.0.1', port: TEST_PORT, user: 'postgres', database: DB_NAME });
+    const clientB = new Client({ host: '127.0.0.1', port: TEST_PORT, user: 'postgres', database: DB_NAME });
+    await clientA.connect();
+    await clientB.connect();
+    try {
+      const call = (targetClient) => asUser(CONTRACTOR1_APPROVED, 'authenticated', () => targetClient.query(
+        `SELECT public.update_milestone_status('${MILESTONE_CONCURRENCY_ID}', 'submitted_for_review', NULL);`
+      ), targetClient);
+      const outcomes = await Promise.allSettled([call(clientA), call(clientB)]);
+      const successes = outcomes.filter((outcome) => outcome.status === 'fulfilled').length;
+      const denied = outcomes.filter((outcome) => outcome.status === 'rejected' && outcome.reason.code === '42501').length;
+      if (successes !== 1 || denied !== 1) throw new Error(`Expected one success and one transition denial, got ${successes} success / ${denied} denied`);
+    } finally { await clientA.end(); await clientB.end(); }
+    const finalRow = await client.query(`SELECT status, submitted_at FROM public.milestones WHERE id = '${MILESTONE_CONCURRENCY_ID}';`);
+    if (finalRow.rows[0]?.status !== 'submitted_for_review' || finalRow.rows[0]?.submitted_at == null) throw new Error('Concurrent transition left invalid milestone state');
+  });
+
   // ----------------------------------------------------------------------------
   // GROUP 3: STORAGE MULTI-TENANT ACCESS
   // ----------------------------------------------------------------------------
@@ -600,6 +1156,15 @@ async function runRealSecurityTests() {
       VALUES ('${crId}', '${PKG1_ID}', '${CONTRACTOR1_APPROVED}', 'Extra Excavation', 'Rock encounter', 'Scope details', 50000, 7, 'submitted')
       ON CONFLICT (id) DO NOTHING;
     `);
+
+    let directDecisionDenied = false;
+    try {
+      await asUser(CONTRACTOR1_APPROVED, 'authenticated', () => client.query(`
+        UPDATE public.change_requests SET status = 'approved'
+        WHERE id = '${crId}';
+      `));
+    } catch (err) { directDecisionDenied = err.code === '42501'; }
+    if (!directDecisionDenied) throw new Error('Change request decision was writable outside its RPC');
 
     let threw = false;
     try {
@@ -819,6 +1384,7 @@ async function runRealSecurityTests() {
   if (failed > 0) {
     throw new Error(`${failed} database security test(s) failed`);
   }
+  return { passed, failed };
 }
 
 // 9. Main Orchestrator
@@ -844,14 +1410,14 @@ async function main() {
     await executeMigrationCycle(1);
 
     // Run Real Security and Authorization Tests
-    await runRealSecurityTests();
+    const securityResults = await runRealSecurityTests();
 
     // Run Migration Cycle 2 (Repeatability / Idempotence Verification from zero)
     await executeMigrationCycle(2);
 
     const totalSeconds = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`\n======================================================================`);
-    console.log(`ALL 2 MIGRATION RUNS AND 13 REAL SECURITY TESTS PASSED (${totalSeconds}s)`);
+    console.log(`ALL 2 MIGRATION RUNS AND ${securityResults.passed} REAL SECURITY TESTS PASSED (${totalSeconds}s)`);
     console.log(`======================================================================\n`);
   } finally {
     if (pgProcess) {
