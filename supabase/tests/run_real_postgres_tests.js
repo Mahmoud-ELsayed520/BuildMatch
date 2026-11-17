@@ -327,9 +327,10 @@ async function executeMigrationCycle(cycleNumber) {
     await runMigrationFile(client, '20261116000002_rls_policies.sql');
     await runMigrationFile(client, '20261116000003_functions_and_rpc.sql');
     await runMigrationFile(client, '20261116000004_storage_buckets.sql');
+    await runMigrationFile(client, '20261117000001_fix_rpc_authorization.sql');
     await grantPostgrestTablePrivileges(client);
     await runSeedFile(client);
-    console.log(`\n✓ [MIGRATION RUN #${cycleNumber} SUCCESS]: All 4 migrations and seed applied with ZERO skipped statements!`);
+    console.log(`\n✓ [MIGRATION RUN #${cycleNumber} SUCCESS]: All 5 migrations and seed applied with ZERO skipped statements!`);
   } finally {
     await client.end();
   }
@@ -597,6 +598,78 @@ async function runRealSecurityTests() {
       }
     }
     if (!threw) throw new Error('Contractor was able to self-approve package completion');
+  });
+
+  // ----------------------------------------------------------------------------
+  // GROUP 4B: RPC NULL-SAFE & UNAUTHENTICATED REGRESSION TESTS
+  // ----------------------------------------------------------------------------
+  await test('RPC Null-Safety: Anonymous callers cannot execute sensitive RPCs (NULL auth.uid)', async () => {
+    const crId = 'c0000000-0000-0000-0000-000000000001';
+
+    // 1. select_contractor_for_package
+    let threwSelect = false;
+    try {
+      await asUser(null, 'anon', async () => {
+        return client.query(`SELECT public.select_contractor_for_package('${PKG1_ID}', '${PROP1_APPROVED}');`);
+      });
+    } catch (e) {
+      if (e.message.includes('permission denied') || e.message.includes('Unauthorized')) {
+        threwSelect = true;
+      }
+    }
+    if (!threwSelect) throw new Error('Expected select_contractor_for_package to reject anonymous call');
+
+    // 2. request_package_handover
+    let threwHandover = false;
+    try {
+      await asUser(null, 'anon', async () => {
+        return client.query(`SELECT public.request_package_handover('${PKG1_ID}');`);
+      });
+    } catch (e) {
+      if (e.message.includes('permission denied') || e.message.includes('Unauthorized')) {
+        threwHandover = true;
+      }
+    }
+    if (!threwHandover) throw new Error('Expected request_package_handover to reject anonymous call');
+
+    // 3. approve_package_completion
+    let threwApprove = false;
+    try {
+      await asUser(null, 'anon', async () => {
+        return client.query(`SELECT public.approve_package_completion('${PKG1_ID}');`);
+      });
+    } catch (e) {
+      if (e.message.includes('permission denied') || e.message.includes('Unauthorized')) {
+        threwApprove = true;
+      }
+    }
+    if (!threwApprove) throw new Error('Expected approve_package_completion to reject anonymous call');
+
+    // 4. decide_change_request
+    let threwChange = false;
+    try {
+      await asUser(null, 'anon', async () => {
+        return client.query(`SELECT public.decide_change_request('${crId}', 'approved', 'Hacked');`);
+      });
+    } catch (e) {
+      if (e.message.includes('permission denied') || e.message.includes('Unauthorized')) {
+        threwChange = true;
+      }
+    }
+    if (!threwChange) throw new Error('Expected decide_change_request to reject anonymous call');
+
+    // 5. admin_verify_contractor
+    let threwVerify = false;
+    try {
+      await asUser(null, 'anon', async () => {
+        return client.query(`SELECT public.admin_verify_contractor('${CONTRACTOR2_PENDING}', 'approved', 'Hacked');`);
+      });
+    } catch (e) {
+      if (e.message.includes('permission denied') || e.message.includes('Unauthorized')) {
+        threwVerify = true;
+      }
+    }
+    if (!threwVerify) throw new Error('Expected admin_verify_contractor to reject anonymous call');
   });
 
   // ----------------------------------------------------------------------------
