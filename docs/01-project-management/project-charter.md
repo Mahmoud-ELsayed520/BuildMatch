@@ -1,30 +1,41 @@
-# BuildMatch — ميثاق المشروع (Project Charter)
-**رمز المشروع:** DEPI-REACT-2026-BM  
-**المرحلة:** التأسيس واستعادة الجدول الزمني (Recovery Phase)  
-**التاريخ المعتمد:** 16 نوفمبر 2026
+# BuildMatch — Project Charter
 
----
+**Project code:** DEPI-REACT-2026-BM  
+**Track:** React Front-End Development  
+**Group:** CAI5_SWD2_S7  
+**Issue date:** 2026-11-16  
+**Status:** Pre-implementation charter; role assignments pending team selection.
 
-## 1. الغرض من الميثاق
-يحدد هذا الميثاق الأهداف الرسمية، النطاق التنفيذي، الصلاحيات، وتوزيع المسؤوليات لمشروع تخرج BuildMatch تحت مظلة مبادرة مصر الرقمية (DEPI) مسار تطوير واجهات React.
+## 1. Purpose
 
----
+This charter defines the project objectives, scope, governance, responsibilities, and delivery boundaries for BuildMatch under DEPI.
 
-## 2. أهداف المشروع (Project Objectives)
-1. **تطوير منصة ويب تفاعلية عالية الأداء:** مبنية باستخدام React 18 وVite وTailwind CSS، تقدم تجربة مستخدم سلسة باللغة العربية متوافقة مع احتياجات السوق المصري.
-2. **بناء بنية بيانات خلفية متينة وآمنة:** باستخدام Supabase (PostgreSQL 15+) مع تطبيق سياسات أمان صارمة على مستوى السجلات (RLS) بنسبة 100% لكافة الجداول المكشوفة.
-3. **أتمتة العمليات التنافسية والتعاقدية:** ضمان ترسية حزم العمل ومعاملات التعديل بطرق ذرية (Atomic Transactions via RPC) لمنع تضارب البيانات أو الترسية المزدوجة.
-4. **توفير توثيق هندسي وإداري كامل:** متوافق مع معايير ومتطلبات التقييم في DEPI.
+## 2. Objectives
 
----
+1. Deliver a responsive Arabic-first web platform using React 18, Vite, and Tailwind CSS.
+2. Use Supabase PostgreSQL/Auth/Storage with database-enforced authorization.
+3. Support structured work-package bidding and one atomic contractor selection per package.
+4. Support milestone evidence, change-request decisions, and formal handover.
+5. Maintain traceable requirements, design, testing, and delivery documentation.
 
-## 3. حدود السلطة والمسؤولية
-- **قائد المشروع (محمود السيد):** المسؤول الحصري عن القرارات المعمارية، تصميم وهندسة قاعدة البيانات، إنشاء وترقية الهجرات (Migrations)، سياسات الأمان RLS، وظائف RPC، تصميم واجهات Figma، واعتماد دمج الأكواد (PR Reviews).
-- **أعضاء الفريق (أعضاء 2، 3، 4):** مسؤولون عن تنفيذ شاشات ومكونات الواجهات الأمامية (React Components) وفقاً لنطاقات المهام المحددة ودون إجراء أي تعديلات مباشرة على قواعد البيانات أو عقود الخدمات.
+## 3. Governance and authority
 
----
+- Project Leader owns architecture, Supabase schema/migrations/RLS/RPC/Storage, Figma, shared contracts, and PR approval.
+- Three frontend module owners will be selected by the teammates from Landowner, Contractor, and Execution/Admin roles.
+- Final names and GitHub usernames must be added after the team confirms role choices.
+- No direct commits to `main` or `develop`; changes flow through reviewed PRs.
 
-## 4. الميزانية والموارد
-- **الميزانية المالية:** صفرية (مشروع أكاديمي تعليمي يعتمد على طبقات الاستخدام المجاني Free Tier في Supabase وGitHub وVercel).
-- **الموارد البشرية:** 4 مهندسين برمجيات مسار React.
-- **البيئة التقنية:** Node.js v22+, Git, GitHub, VS Code / Antigravity IDE, Supabase Local CLI.
+## 4. Budget and resources
+
+- Academic project; planned use of free-tier services where suitable.
+- Human resources: four DEPI React Front-End members.
+- Tools: Node.js, npm, Git, GitHub, VS Code/Antigravity, Figma, and Supabase tooling.
+- Any paid service or production resource requires team approval before use.
+
+## 5. Constraints and assumptions
+
+- Implementation deadline: 2026-11-30.
+- Final presentation/testing/reports deadline: 2026-12-04.
+- MVP scope is frozen unless formally changed.
+- The repository contains starter code and database artifacts; these must be reviewed rather than recreated.
+- Supabase Cloud provisioning and production deployment are not considered complete until verified.

@@ -1,0 +1,24 @@
+graph TD
+  Start([Start: Contractor Completes Registration]) --> FillBio[Fill Business Name, Specializations, Bio, Experience]
+  FillBio --> UploadKYC[Attach Commercial Register, Tax Card, Syndicate ID]
+  UploadKYC --> ValidateMime{Valid PDF/Image < 10 MiB?}
+
+  ValidateMime -- No --> RejectFile[Display File Format/Size Error]
+  RejectFile --> UploadKYC
+
+  ValidateMime -- Yes --> StoreKYC[Upload to verification-docs Bucket & Record Pending Status]
+  StoreKYC --> AdminQueue[Contractor Enters Admin Verification Queue]
+
+  AdminQueue --> AdminAudit[Administrator Inspects Credentials via Secure Signed URLs]
+  AdminAudit --> DecisionAdmin{Admin Verification Decision}
+
+  DecisionAdmin -- Approve --> ExecuteApproveRPC[Execute admin_verify_contractor status: approved]
+  ExecuteApproveRPC --> WriteAuditApprove[Log Immutable Audit Entry & Notify Contractor]
+  WriteAuditApprove --> EndApproved([End: Contractor Approved & Proposal Submission Unlocked])
+
+  DecisionAdmin -- Reject --> ExecuteRejectRPC[Execute admin_verify_contractor status: rejected]
+  ExecuteRejectRPC --> WriteAuditReject[Log Rejection Notes & Notify Contractor]
+  WriteAuditReject --> ResubmitOpt{Contractor Resubmits Corrected Docs?}
+
+  ResubmitOpt -- Yes --> UploadKYC
+  ResubmitOpt -- No --> EndRejected([End: Contractor Retains Read-Only Marketplace Access])

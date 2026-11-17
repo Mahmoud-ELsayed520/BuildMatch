@@ -1,0 +1,53 @@
+graph TB
+  subgraph View1["VIEW 1: CURRENT VERIFIED LOCAL DEVELOPMENT & TEST BASELINE"]
+    direction TB
+    subgraph Local_Workstation["Developer Workstation (Windows 10/11)"]
+      Browser_Local["Web Browser (Chrome / Edge)\nhttp://localhost:5173"]
+
+      subgraph Node_Environment["Node.js 20+ Runtime"]
+        Vite_Server["Vite 5 Dev Server\n(Port 5173)"]
+        Vitest_Runner["Vitest Test Runner\n(Frontend Unit Tests)"]
+        PG_Test_Harness["run_real_postgres_tests.js\n(Dynamic PG Runner & Harness)"]
+      end
+
+      subgraph Native_Postgres["Native PostgreSQL 18.6 Server"]
+        PG_Process["postgres.exe (Port 5433)\nIsolated Cluster (.pgdata_test)"]
+        DB_Test["Local Test Database\n(15 Tables + RLS + 5 RPCs + Shim Storage)"]
+      end
+    end
+
+    Browser_Local -- "HTTP (Loopback)" --> Vite_Server
+    PG_Test_Harness -- "TCP Loopback (127.0.0.1:5433)" --> PG_Process
+    PG_Process --> DB_Test
+  end
+
+  subgraph View2["VIEW 2: PLANNED TARGET CLOUD PRODUCTION DEPLOYMENT"]
+    direction TB
+    Client_Device["End-User Device\n(Desktop / Mobile Browser)"]
+
+    subgraph Vercel_Cloud["Vercel Global Edge Network (Planned Frontend Hosting)"]
+      Vercel_CDN["Vercel Edge CDN\n(TLS Termination & Static Asset Caching)"]
+      React_SPA["Compiled React 18 SPA Artifacts\n(HTML, Gzipped JS, CSS)"]
+    end
+
+    subgraph Supabase_Cloud["Supabase Managed Cloud Platform (Planned Backend Hosting)"]
+      Kong_Gateway["Kong API Gateway\n(https://<project-ref>.supabase.co)"]
+      GoTrue_Cloud["Supabase Auth (GoTrue Service)"]
+      PostgREST_Cloud["PostgREST HTTP Engine"]
+      Storage_Cloud["Supabase Storage Service (S3-compatible)"]
+
+      subgraph Managed_Postgres["Managed PostgreSQL 15+ Database Instance"]
+        Prod_DB["Production Database\n(15 Public Tables + 100% RLS + 5 RPCs)"]
+        PgBouncer["Connection Pooler (Supavisor)"]
+      end
+    end
+
+    Client_Device -- "HTTPS / TLS 1.3" --> Vercel_CDN
+    Vercel_CDN --> React_SPA
+    Client_Device -- "HTTPS (Bearer JWT / Anon Key)" --> Kong_Gateway
+    Kong_Gateway --> GoTrue_Cloud
+    Kong_Gateway --> PostgREST_Cloud
+    Kong_Gateway --> Storage_Cloud
+    PostgREST_Cloud --> PgBouncer
+    PgBouncer --> Prod_DB
+  end

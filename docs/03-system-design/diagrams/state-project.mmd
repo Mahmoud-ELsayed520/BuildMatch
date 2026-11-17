@@ -1,0 +1,23 @@
+stateDiagram-v2
+  [*] --> draft : Landowner creates project
+
+  draft --> open_for_proposals : Landowner publishes to marketplace
+  draft --> cancelled : Landowner discards draft
+
+  open_for_proposals --> under_review : Proposals received & opened for review
+  open_for_proposals --> cancelled : Landowner cancels project
+
+  under_review --> partially_assigned : Some (not all) packages awarded
+  under_review --> assigned : All packages awarded
+  under_review --> cancelled : Landowner cancels project
+
+  partially_assigned --> assigned : Remaining packages awarded
+  partially_assigned --> in_progress : Construction begins on assigned packages
+
+  assigned --> in_progress : Construction begins on all packages
+  in_progress --> completed : All packages verified completed
+  in_progress --> closed : Project concluded administratively
+
+  completed --> [*]
+  cancelled --> [*]
+  closed --> [*]

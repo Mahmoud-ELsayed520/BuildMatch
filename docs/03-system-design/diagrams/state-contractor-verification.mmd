@@ -1,0 +1,10 @@
+stateDiagram-v2
+  [*] --> pending : Contractor registers & uploads KYC documents
+
+  pending --> approved : admin_verify_contractor RPC (status: 'approved')
+  pending --> rejected : admin_verify_contractor RPC (status: 'rejected')
+
+  rejected --> pending : Contractor uploads corrected KYC documents
+  approved --> rejected : Admin revokes verification upon fraud / violation
+
+  approved --> [*] : Verified active contractor

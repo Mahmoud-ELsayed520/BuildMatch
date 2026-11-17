@@ -1,0 +1,30 @@
+erDiagram
+  USER ||--o| LANDOWNER_PROFILE : "specializes as"
+  USER ||--o| CONTRACTOR_PROFILE : "specializes as"
+  CONTRACTOR_PROFILE ||--o{ VERIFICATION_DOCUMENT : "submits"
+
+  LANDOWNER_PROFILE ||--o{ PROJECT : "owns"
+  PROJECT ||--o{ PROJECT_FILE : "contains"
+  PROJECT ||--|{ WORK_PACKAGE : "decomposed into"
+
+  WORK_PACKAGE ||--o{ PROPOSAL : "receives bids"
+  CONTRACTOR_PROFILE ||--o{ PROPOSAL : "submits"
+  PROPOSAL ||--|{ PROPOSAL_ITEM : "itemized by"
+
+  WORK_PACKAGE ||--o| CONTRACTOR_PROFILE : "awarded to"
+  WORK_PACKAGE ||--o| PROPOSAL : "assigned via"
+
+  WORK_PACKAGE ||--o{ MILESTONE : "executed via"
+  MILESTONE ||--o{ PROGRESS_UPDATE : "tracked by"
+  CONTRACTOR_PROFILE ||--o{ PROGRESS_UPDATE : "logs progress"
+
+  WORK_PACKAGE ||--o{ CHANGE_REQUEST : "adjusted through"
+  USER ||--o{ CHANGE_REQUEST : "requests / decides"
+
+  WORK_PACKAGE ||--o| REVIEW : "evaluated by"
+  LANDOWNER_PROFILE ||--o{ REVIEW : "writes"
+  CONTRACTOR_PROFILE ||--o{ REVIEW : "receives"
+
+  USER ||--o{ NOTIFICATION : "receives"
+  USER ||--o{ REPORT : "files / investigated by"
+  USER ||--o{ AUDIT_LOG : "triggers"

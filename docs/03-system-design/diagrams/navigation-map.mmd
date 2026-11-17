@@ -1,0 +1,62 @@
+graph TD
+  Landing["Public Landing Page (/)"]
+
+  subgraph Guest_Routes["Guest Navigation"]
+    Login["/login"]
+    Register["/register"]
+    PublicDirectory["/contractors (Public Directory)"]
+    HowItWorks["/how-it-works"]
+  end
+
+  subgraph Landowner_Routes["Landowner Experience (/landowner/*)"]
+    OwnerDash["Dashboard (/landowner/dashboard)"]
+    CreateProj["Post Project (/landowner/projects/new)"]
+    ManageProj["Project Details (/landowner/projects/:id)"]
+    PackageDetail["Work Package (/landowner/packages/:id)"]
+    CompareBids["Proposal Comparison (/landowner/packages/:id/proposals)"]
+    OwnerExec["Execution Workspace (/landowner/packages/:id/execution)"]
+    SubmitReview["Write Review (/landowner/packages/:id/review)"]
+  end
+
+  subgraph Contractor_Routes["Contractor Experience (/contractor/*)"]
+    ContractorDash["Dashboard (/contractor/dashboard)"]
+    Discover["Discover Packages (/contractor/discover)"]
+    PackageBid["Package Details & Bid (/contractor/packages/:id)"]
+    MyBids["My Proposals (/contractor/proposals)"]
+    ContractorExec["Milestone Execution (/contractor/packages/:id/execution)"]
+    KYCProfile["KYC & Company Profile (/contractor/profile)"]
+  end
+
+  subgraph Admin_Routes["Admin Portal (/admin/*)"]
+    AdminDash["Admin Dashboard (/admin)"]
+    KYCQueue["KYC Verification Queue (/admin/verification)"]
+    AuditViewer["Audit Logs Inspector (/admin/audit-logs)"]
+    DisputeReports["Dispute Reports (/admin/reports)"]
+  end
+
+  %% Navigation Links
+  Landing --> Login
+  Landing --> Register
+  Landing --> PublicDirectory
+  Landing --> HowItWorks
+
+  Login -- role == 'landowner' --> OwnerDash
+  Login -- role == 'contractor' --> ContractorDash
+  Login -- role == 'admin' --> AdminDash
+
+  OwnerDash --> CreateProj
+  OwnerDash --> ManageProj
+  ManageProj --> PackageDetail
+  PackageDetail --> CompareBids
+  PackageDetail --> OwnerExec
+  OwnerExec --> SubmitReview
+
+  ContractorDash --> Discover
+  Discover --> PackageBid
+  PackageBid --> MyBids
+  ContractorDash --> ContractorExec
+  ContractorDash --> KYCProfile
+
+  AdminDash --> KYCQueue
+  AdminDash --> AuditViewer
+  AdminDash --> DisputeReports

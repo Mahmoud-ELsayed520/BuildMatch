@@ -1,0 +1,19 @@
+graph TD
+  Start([Start: Landowner Initiates Project]) --> EnterDetails[Enter Project Scope, Area, Floors, Budget, City]
+  EnterDetails --> AddPackages[Define One or More Work Packages]
+  AddPackages --> UploadDocs{Upload Architectural Drawings?}
+
+  UploadDocs -- Yes --> StoreFiles[Store in project-files Bucket]
+  StoreFiles --> DecisionPublish{Publish Now or Save Draft?}
+  UploadDocs -- No --> DecisionPublish
+
+  DecisionPublish -- Save Draft --> SaveDraft[Set Project Status: draft, Packages: draft]
+  SaveDraft --> EndDraft([Project Saved in Drafts])
+
+  DecisionPublish -- Publish --> ValidatePackages{At least 1 Package Defined?}
+  ValidatePackages -- No --> ErrorBlock[Show Error: Project requires at least one work package]
+  ErrorBlock --> AddPackages
+
+  ValidatePackages -- Yes --> PublishDB[Set Project: open_for_proposals, Packages: open]
+  PublishDB --> NotifyMarketplace[Marketplace Index Updated & Discoverable]
+  NotifyMarketplace --> EndPublished([End: Project Published to Marketplace])

@@ -1,0 +1,13 @@
+stateDiagram-v2
+  [*] --> pending : Package awarded & milestone created
+
+  pending --> in_progress : Previous milestone approved / work initiated
+
+  in_progress --> submitted_for_review : Contractor logs 100% progress & uploads photos
+
+  submitted_for_review --> approved : Landowner approves photos & authorizes payment tranche
+  submitted_for_review --> rework_required : Landowner identifies defect & enters rework notes
+
+  rework_required --> in_progress : Contractor resumes work to rectify defects
+
+  approved --> [*] : Milestone completed

@@ -100,11 +100,14 @@ Local Supabase setup commands and test scripts are detailed in [`docs/05-impleme
 
 ## 6. Team Structure & Responsibilities
 
-Developed under the Digital Egypt Pioneers Initiative (DEPI) React Track:
+Developed under the Digital Egypt Pioneers Initiative (DEPI) React Track (Group: `CAI5_SWD2_S7`):
 
-- **Mahmoud El Sayed (Project Leader):** Overall Architecture, Database & Supabase Engineering, Security & RLS, Figma UI/UX Design System, Code Review.
-- **Member 2:** Landowner Module (Project creation, work package management, proposal comparison UI).
-- **Member 3:** Contractor Module (Profile & verification UI, project discovery, proposal submission).
-- **Member 4:** Construction Execution Module & Admin Dashboard UI (Milestones, progress photos, change requests, admin verification).
+- **Project Leader:** Overall Architecture, Database & Supabase Engineering, Security & RLS, Figma UI/UX Design System, Shared Contracts, Code Review and Integration Approval.
+- **Member 2:** Front-End Engineer (Module allocation pending team confirmation).
+- **Member 3:** Front-End Engineer (Module allocation pending team confirmation).
+- **Member 4:** Front-End Engineer (Module allocation pending team confirmation).
 
-For full team workflows and branch guidelines, see [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/08-team-work/`](docs/08-team-work/).
+> **Important Note on Module Allocation:**  
+> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
+
+For full team workflows, pre-implementation handoff, and branch guidelines, see [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/00-depi-readiness/`](docs/00-depi-readiness/), and [`docs/08-team-work/`](docs/08-team-work/).

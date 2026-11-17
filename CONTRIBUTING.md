@@ -8,14 +8,17 @@ Welcome to the BuildMatch developer and contributor guidelines. BuildMatch is de
 
 To ensure smooth parallel engineering without code collisions or architecture drifts, technical ownership is strictly partitioned:
 
-| Team Role | Lead / Assignee | Primary Scope & Boundaries |
+| Team Role | Assignee | Primary Scope & Boundaries |
 | :--- | :--- | :--- |
-| **Project Leader / Architect** | Mahmoud El Sayed | System Architecture, Supabase Database, SQL Migrations, RLS Policies, Storage Buckets, RPC Functions, Figma Master UI/UX, PR Reviews. |
-| **Frontend Engineer 1** | Member 2 | **Landowner Module:** Project drafting, publishing, work package specification, comparison matrix UI. |
-| **Frontend Engineer 2** | Member 3 | **Contractor Module:** Contractor onboarding, credential upload UI, project search/filter discovery, proposal builder. |
-| **Frontend Engineer 3** | Member 4 | **Execution & Admin Module:** Milestone tracking, progress photo submission, Change Request reviews, Admin verification console. |
+| **Project Leader / Architect** | Project Leader | System Architecture, Supabase Database, SQL Migrations, RLS Policies, Storage Buckets, RPC Functions, Figma Master UI/UX, Shared Service Contracts, PR Reviews. |
+| **Frontend Engineer** | Member 2 | Frontend module ownership to be selected and confirmed by team (Options: Landowner, Contractor, Execution/Admin). |
+| **Frontend Engineer** | Member 3 | Frontend module ownership to be selected and confirmed by team (Options: Landowner, Contractor, Execution/Admin). |
+| **Frontend Engineer** | Member 4 | Frontend module ownership to be selected and confirmed by team (Options: Landowner, Contractor, Execution/Admin). |
 
-> **Critical Rule:** Frontend engineers must NOT modify database migrations, invent custom API endpoints, or bypass Supabase client contracts. All data interactions must use the standardized service layers defined under `src/services/api/` and documented in `docs/03-system-analysis-design/api-data-contracts.md`.
+> **Important Note on Module Allocation:**  
+> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
+
+> **Critical Rule:** Frontend engineers must NOT modify database migrations, invent custom API endpoints, or bypass Supabase client contracts. All data interactions must use the standardized service layers defined under `src/services/` and documented in [`docs/03-system-design/16-api-and-integration-design.md`](docs/03-system-design/16-api-and-integration-design.md).
 
 ---
 

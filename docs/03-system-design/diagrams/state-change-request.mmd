@@ -1,0 +1,13 @@
+stateDiagram-v2
+  [*] --> draft : User initiates change request
+
+  draft --> submitted : User submits request with cost, time, and scope impact
+  draft --> cancelled : User discards request
+
+  submitted --> approved : decide_change_request RPC (status: 'approved')
+  submitted --> rejected : decide_change_request RPC (status: 'rejected')
+  submitted --> cancelled : Requester withdraws request
+
+  approved --> [*] : Scope & financials formally adjusted
+  rejected --> [*] : Original contract scope preserved
+  cancelled --> [*]

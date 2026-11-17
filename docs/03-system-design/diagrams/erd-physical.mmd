@@ -1,0 +1,237 @@
+erDiagram
+  PROFILES {
+    uuid id PK
+    text role
+    text full_name
+    text phone
+    text city
+    text avatar_url
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  CONTRACTOR_PROFILES {
+    uuid id PK,FK
+    text business_name
+    text bio
+    text[] specializations
+    int years_of_experience
+    text verification_status
+    text verification_notes
+    timestamptz verified_at
+    uuid verified_by FK
+    jsonb portfolio_items
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  VERIFICATION_DOCUMENTS {
+    uuid id PK
+    uuid contractor_id FK
+    text document_type
+    text file_path
+    text file_name
+    bigint file_size_bytes
+    text mime_type
+    text verification_status
+    text notes
+    timestamptz uploaded_at
+  }
+
+  PROJECTS {
+    uuid id PK
+    uuid owner_id FK
+    text title
+    text description
+    text city
+    text district
+    numeric land_area_sqm
+    int floors_count
+    text construction_type
+    numeric estimated_budget
+    varchar currency
+    date expected_start_date
+    date expected_completion_date
+    text status
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  PROJECT_FILES {
+    uuid id PK
+    uuid project_id FK
+    text file_category
+    text file_path
+    text file_name
+    bigint file_size_bytes
+    boolean is_public
+    timestamptz created_at
+  }
+
+  PROJECT_PACKAGES {
+    uuid id PK
+    uuid project_id FK
+    text title
+    text category
+    text description
+    text scope_of_work
+    numeric estimated_budget
+    int target_duration_days
+    text status
+    uuid assigned_contractor_id FK
+    uuid assigned_proposal_id FK
+    timestamptz assigned_at
+    timestamptz handover_requested_at
+    timestamptz completed_at
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  PROPOSALS {
+    uuid id PK
+    uuid package_id FK
+    uuid contractor_id FK
+    numeric total_price
+    varchar currency
+    int proposed_duration_days
+    text scope_summary
+    text included_materials
+    text excluded_work
+    text payment_schedule_terms
+    text notes
+    text status
+    timestamptz submitted_at
+    timestamptz decision_at
+    text decision_reason
+    int version
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  PROPOSAL_ITEMS {
+    uuid id PK
+    uuid proposal_id FK
+    text item_description
+    numeric quantity
+    text unit
+    numeric unit_price
+    numeric total_price
+    timestamptz created_at
+  }
+
+  MILESTONES {
+    uuid id PK
+    uuid package_id FK
+    text title
+    text description
+    int sequence_order
+    date due_date
+    numeric payment_percentage
+    numeric payment_amount
+    text status
+    timestamptz submitted_at
+    timestamptz approved_at
+    text rework_notes
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  PROGRESS_UPDATES {
+    uuid id PK
+    uuid milestone_id FK
+    uuid contractor_id FK
+    text notes
+    int percentage_completed
+    jsonb photos
+    timestamptz created_at
+  }
+
+  CHANGE_REQUESTS {
+    uuid id PK
+    uuid package_id FK
+    uuid requested_by FK
+    text title
+    text reason
+    text scope_change_description
+    numeric cost_impact
+    int time_impact_days
+    text status
+    uuid decision_by FK
+    text decision_notes
+    timestamptz decided_at
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  REVIEWS {
+    uuid id PK
+    uuid package_id FK
+    uuid reviewer_id FK
+    uuid contractor_id FK
+    int rating_overall
+    int rating_quality
+    int rating_punctuality
+    int rating_communication
+    text comment
+    boolean is_verified_completion
+    text status
+    timestamptz created_at
+  }
+
+  NOTIFICATIONS {
+    uuid id PK
+    uuid user_id FK
+    text title
+    text message
+    text link
+    text type
+    boolean is_read
+    timestamptz created_at
+  }
+
+  REPORTS {
+    uuid id PK
+    uuid reporter_id FK
+    text reported_type
+    uuid reported_id
+    text reason
+    text status
+    text admin_notes
+    uuid resolved_by FK
+    timestamptz resolved_at
+    timestamptz created_at
+  }
+
+  AUDIT_LOGS {
+    uuid id PK
+    uuid actor_id FK
+    text action
+    text entity_type
+    uuid entity_id
+    jsonb details
+    text ip_address
+    timestamptz created_at
+  }
+
+  %% Relationships
+  PROFILES ||--o| CONTRACTOR_PROFILES : "extends"
+  PROFILES ||--o{ PROJECTS : "owns"
+  CONTRACTOR_PROFILES ||--o{ VERIFICATION_DOCUMENTS : "has"
+  PROJECTS ||--o{ PROJECT_FILES : "contains"
+  PROJECTS ||--|{ PROJECT_PACKAGES : "decomposed_into"
+  PROJECT_PACKAGES ||--o{ PROPOSALS : "receives"
+  CONTRACTOR_PROFILES ||--o{ PROPOSALS : "submits"
+  PROJECT_PACKAGES ||--o| CONTRACTOR_PROFILES : "assigned_contractor"
+  PROJECT_PACKAGES ||--o| PROPOSALS : "assigned_proposal"
+  PROPOSALS ||--|{ PROPOSAL_ITEMS : "itemized_into"
+  PROJECT_PACKAGES ||--o{ MILESTONES : "executed_through"
+  MILESTONES ||--o{ PROGRESS_UPDATES : "logs"
+  CONTRACTOR_PROFILES ||--o{ PROGRESS_UPDATES : "records"
+  PROJECT_PACKAGES ||--o{ CHANGE_REQUESTS : "adjusts"
+  PROFILES ||--o{ CHANGE_REQUESTS : "initiates"
+  PROJECT_PACKAGES ||--o| REVIEWS : "evaluated_in"
+  PROFILES ||--o{ REVIEWS : "authors"
+  CONTRACTOR_PROFILES ||--o{ REVIEWS : "evaluated"
+  PROFILES ||--o{ NOTIFICATIONS : "receives"
+  PROFILES ||--o{ REPORTS : "files"
+  PROFILES ||--o{ AUDIT_LOGS : "triggers"

@@ -1,0 +1,77 @@
+graph LR
+  subgraph Actors["System Actors"]
+    Guest["Guest Visitor"]
+    Landowner["Landowner"]
+    Contractor["Contractor"]
+    Admin["Platform Administrator"]
+  end
+
+  subgraph Auth_Module["Authentication & Profile Use Cases"]
+    UC_Reg["UC-AUTH-01: Register Account"]
+    UC_Login["UC-AUTH-02: Authenticate (Login)"]
+    UC_Profile["UC-AUTH-03: Manage Profile"]
+  end
+
+  subgraph Marketplace_Module["Marketplace & Bidding Use Cases"]
+    UC_CreateProj["UC-PROJ-01: Create Residential Project"]
+    UC_Packages["UC-PROJ-02: Decompose into Work Packages"]
+    UC_Drawings["UC-PROJ-03: Upload Architectural Drawings"]
+    UC_Publish["UC-PROJ-04: Publish Project to Marketplace"]
+    UC_Discover["UC-DISC-01: Discover & Inspect Packages"]
+    UC_SubmitBid["UC-PROP-01: Submit Structured BOQ Proposal"]
+    UC_Compare["UC-COMP-01: Compare Proposals Side-by-Side"]
+    UC_Select["UC-COMP-02: Select Contractor (Atomic RPC)"]
+  end
+
+  subgraph KYC_Module["Contractor KYC & Public Directory"]
+    UC_SubmitKYC["UC-CONT-01: Submit KYC Documents"]
+    UC_BrowseDir["UC-CONT-02: Browse Public Contractor Directory"]
+    UC_ReviewKYC["UC-ADMIN-01: Review & Decide Contractor KYC"]
+  end
+
+  subgraph Execution_Module["Construction Execution Use Cases"]
+    UC_LogProgress["UC-EXEC-01: Log Milestone Progress & Photos"]
+    UC_ApproveMile["UC-EXEC-02: Review / Approve Milestone"]
+    UC_ChangeReq["UC-EXEC-03: Submit Change Request"]
+    UC_DecideChange["UC-EXEC-04: Decide Change Request"]
+    UC_ReqHandover["UC-EXEC-05: Request Handover"]
+    UC_ConfirmDone["UC-EXEC-06: Confirm Package Completion"]
+    UC_Review["UC-REV-01: Submit Verified Review"]
+  end
+
+  subgraph Admin_Module["Governance & Administration"]
+    UC_Audit["UC-ADMIN-02: Inspect System Audit Logs"]
+    UC_Moderate["UC-ADMIN-03: Content Moderation & Disputes"]
+  end
+
+  %% Actor Connections
+  Guest --> UC_Reg
+  Guest --> UC_Login
+  Guest --> UC_BrowseDir
+
+  Landowner --> UC_Login
+  Landowner --> UC_Profile
+  Landowner --> UC_CreateProj
+  Landowner --> UC_Packages
+  Landowner --> UC_Drawings
+  Landowner --> UC_Publish
+  Landowner --> UC_Compare
+  Landowner --> UC_Select
+  Landowner --> UC_ApproveMile
+  Landowner --> UC_DecideChange
+  Landowner --> UC_ConfirmDone
+  Landowner --> UC_Review
+
+  Contractor --> UC_Login
+  Contractor --> UC_Profile
+  Contractor --> UC_SubmitKYC
+  Contractor --> UC_Discover
+  Contractor --> UC_SubmitBid
+  Contractor --> UC_LogProgress
+  Contractor --> UC_ChangeReq
+  Contractor --> UC_ReqHandover
+
+  Admin --> UC_Login
+  Admin --> UC_ReviewKYC
+  Admin --> UC_Audit
+  Admin --> UC_Moderate

@@ -1,49 +1,85 @@
-# BuildMatch — دليل وقائمة إعداد ملف Figma (Figma Handoff Checklist & Guide)
+# BuildMatch — Figma Handoff Checklist
 
-> **تنبيه إداري وتوثيقي:**  
-> لم يتم إنشاء أو ربط ملف Figma سحابي آلي حتى تاريخه. تم إعداد هذا المستند كدليل عمل وتوجيه شامل لقائد المشروع (محمود السيد) لتصميم وتجهيز ملف Figma الرئيسي تمهيداً لتسليم الواجهات لبقية أعضاء الفريق.
+> **Important Note on Module Allocation:**  
+> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
 
----
+**Figma file:** https://www.figma.com/design/oNUAk7viZgNJ82x8B92wqn  
+**File name:** BuildMatch | بيلد ماتش — Product Design v1.0  
+**Audit date:** 2026-11-16  
+**Status:** Previously verified inventory inspected through the connected Figma integration.
 
-## 1. قائمة حصر الشاشات المطلوب تصميمها في Figma (Screen Inventory)
+## 1. Verified file structure
 
-### أ. الشاشات العامة والمصادقة:
-- [ ] **SCR-01:** الصفحة الرئيسية التعريفية (Landing Page) مع استعراض حزم العمل والقيمة المضافة.
-- [ ] **SCR-02:** شاشة تسجيل الدخول (Login).
-- [ ] **SCR-03:** شاشة إنشاء حساب جديد (Register) مع محدد الدور (مالك / مقاول).
-- [ ] **SCR-04:** شاشة حظر الوصول (Unauthorized 403).
+10 pages:
+1. 00 — Cover
+2. 01 — Foundations
+3. 02 — Components
+4. 03 — Public
+5. 04 — Landowner
+6. 05 — Contractor
+7. 06 — Admin
+8. 07 — Prototypes
+9. 08 — Responsive
+10. 09 — Handoff
 
-### ب. شاشات مالك المشروع (Landowner):
-- [ ] **SCR-05:** لوحة تحكم المالك الرئيسية (نظرة عامة على المشاريع والحزم).
-- [ ] **SCR-06:** نموذج إضافة مشروع سكني جديد (بيانات الموقع، المساحة، الميزانية، المخططات).
-- [ ] **SCR-07:** صفحة تفاصيل المشروع وإدارة حزم العمل (Work Packages List).
-- [ ] **SCR-08:** نموذج إنشاء وتعديل حزمة عمل جديدة.
-- [ ] **SCR-09:** **شاشة مقارنة العروض الهندسية (Proposal Comparison Matrix)** مع إمكانية الترسية.
-- [ ] **SCR-10:** شاشة تفاصيل الحزمة المسندة ومتابعة المراحل واعتماد الاستلام.
+## 2. Verified inventory
 
-### ج. شاشات المقاول (Contractor):
-- [ ] **SCR-11:** لوحة تحكم المقاول (ملخص العروض والحزم المسندة).
-- [ ] **SCR-12:** صفحة استكشاف المشاريع المفتوحة والبحث والتصفية.
-- [ ] **SCR-13:** صفحة تفاصيل حزمة العمل وتحميل المخططات.
-- [ ] **SCR-14:** نموذج تقديم عرض سعر مهيكل (تقديم السعر، المدة، الشروط، جدول الدفعات).
-- [ ] **SCR-15:** شاشة الملف المهني ورفع مستندات التوثيق الإداري (KYC).
+| Area | Verified count |
+|---|---:|
+| Public screens/dialogs | 11 |
+| Landowner screens/dialogs | 27 |
+| Contractor screens/dialogs | 29 |
+| Admin screens/dialogs | 13 |
+| **Primary screens/dialogs total** | **80** |
+| Components | 159 |
+| Component sets | 12 |
+| Variables | 39 |
+| Text styles | 18 |
+| Prototype reactions | 128 |
+| Representative responsive layouts | 17 |
 
-### د. شاشات المتابعة والتنفيذ المشتركة:
-- [ ] **SCR-16:** لوحة مراحل التنفيذ الميداني (Milestones Timeline).
-- [ ] **SCR-17:** نموذج رفع تحديث مرحلة مصور (Progress Update with Photos).
-- [ ] **SCR-18:** نافذة تقديم ومراجعة طلبات التعديل (Change Request Modal).
+The 80 primary screen/dialog count is the sum of the Public, Landowner, Contractor, and Admin page inventories. Prototype copies and supporting frames are not counted as additional primary product screens.
 
-### هـ. شاشات الإدارة والرقابة (Admin):
-- [ ] **SCR-19:** لوحة الإشراف الإداري وإحصائيات المنصة.
-- [ ] **SCR-20:** صفحة مراجعة طلبات التوثيق وتدقيق مستندات المقاولين.
-- [ ] **SCR-21:** سجل التدقيق والرقابة (Audit Logs Viewer).
+## 3. Responsive coverage
 
----
+The Responsive page contains 17 representative layouts:
+- 6 Arabic RTL mobile layouts.
+- 6 Arabic RTL tablet layouts.
+- 2 additional Arabic RTL mobile layouts (progress photo upload and BOQ pricing).
+- 3 English LTR examples (two desktop, one mobile).
 
-## 2. قائمة فحص ومراجعة التسليم للمطورين (Handoff Checklist)
-- [ ] استخدام شبكة تخطيط موحدة (8pt Grid System).
-- [ ] تسمية الطبقات والإطارات بأسماء المكونات المطابقة للأكواد البرمجية (مثل: `Button`, `Card`, `Badge`).
-- [ ] تطبيق Design Tokens المعتمدة للألوان والخطوط.
-- [ ] توفير الحالات التفاعلية للمكونات (Default, Hover, Active, Disabled, Loading, Error).
-- [ ] تصميم نسختين لكل شاشة: Desktop (1440px) و Mobile (375px).
-- [ ] توثيق اتجاه واجهة المستخدم من اليمين لليسار (RTL Support) وتوزيع الأيقونات والأزرار.
+This is representative coverage, not a claim that all 80 screens have mobile, tablet, and desktop variants.
+
+## 4. Prototype and handoff
+
+- Prototype page contains 86 top-level frames.
+- Direct structural inspection found 128 nodes with prototype reactions (128 reactions).
+- Handoff page exists and includes a Developer Handoff specification.
+- Prototype flow index node: `2:13977`.
+- Developer handoff node: `2:10703`.
+
+## 5. Developer handoff checklist
+
+- [x] Design pages organized by Foundations, Components, Public, Landowner, Contractor, Admin, Prototypes, Responsive, and Handoff.
+- [x] Reusable components and component sets present.
+- [x] Semantic variables and text styles present.
+- [x] Primary role-based screen inventory present.
+- [x] Representative responsive examples present.
+- [x] Prototype interactions present.
+- [ ] Every primary screen has all responsive breakpoints.
+- [ ] Every screen has every loading, empty, error, success, disabled, and permission state instantiated.
+- [ ] All English LTR screen equivalents are complete.
+- [ ] Real photo/evidence assets replace any simulated placeholders where required.
+- [ ] Runtime keyboard navigation, focus behavior, screen-reader labels, and contrast are tested in the browser.
+- [ ] Final screen-to-task mapping is reviewed by each assigned frontend owner after team role selection.
+
+## 6. Implementation notes
+
+- Treat Figma as the UI source of truth; do not invent new visual patterns independently.
+- Forms and uploads shown as demos/prototypes are not connected to live backend services by virtue of appearing in Figma.
+- UI implementation must use the approved route map and service/API contracts (`docs/03-system-design/16-api-and-integration-design.md`).
+- Any design change affecting requirements, data fields, or workflows must be reviewed by the Project Leader and reflected in documentation.
+
+## 7. Correction to previous documentation
+
+An earlier version of this checklist stated that no cloud Figma file existed and listed only 21 screens. That statement is obsolete. The current file was created and the inventory above was verified on 2026-11-16.

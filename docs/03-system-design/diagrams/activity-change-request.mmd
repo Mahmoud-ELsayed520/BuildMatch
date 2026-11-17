@@ -1,0 +1,18 @@
+graph TD
+  Start([Start: Scope / Financial Variation Identified]) --> AuthorCR[Author Change Request: Title, Reason, Scope, Cost EGP, Time Days]
+  AuthorCR --> SubmitCR[Submit to Database: status = submitted]
+  SubmitCR --> NotifyReviewer[Counterpart Party Receives Notification]
+
+  NotifyReviewer --> InspectCR[Inspect Cost & Timeline Impact in Dashboard]
+  InspectCR --> DecideCR{Counterpart Decision}
+
+  DecideCR -- Approve --> CallApproveRPC[Execute decide_change_request status: approved]
+  CallApproveRPC --> CommitApproval[Update change_requests -> approved with Decision Notes]
+  CommitApproval --> ApplyChanges[Adjust Package Financial Baseline & Schedule in project_packages]
+  ApplyChanges --> NotifyRequester[Dispatch Notification to Requester]
+  NotifyRequester --> EndApproved([Change Formally Integrated into Project])
+
+  DecideCR -- Reject --> CallRejectRPC[Execute decide_change_request status: rejected]
+  CallRejectRPC --> CommitRejection[Update change_requests -> rejected with Rejection Notes]
+  CommitRejection --> NotifyReject[Dispatch Notification to Requester]
+  NotifyReject --> EndRejected([Change Discarded: Original Contract Prevails])

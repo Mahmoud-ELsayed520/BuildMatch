@@ -1,54 +1,27 @@
-# BuildMatch — مصفوفة توزيع المهام الفردية (Task Allocation Matrix)
+# BuildMatch — Task Allocation Matrix
 
-> **المسار:** React Front-End Development — DEPI 2026  
-> **الهدف:** تمكين جميع أعضاء الفريق الأربعة من العمل والتطوير بالتوازي دون انتظار أو تضارب في الأكواد.
+**Status:** Role-based allocation prepared; Member 2, Member 3, and Member 4 retain numbered identifiers, and module allocations remain pending team selection.
 
----
+> **Important Note on Module Allocation:**  
+> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
 
-## 1. تفصيل المهام والمسؤوليات الفردية
+| Workstream | Responsible role | Expected folders | Branch | Dependencies |
+|---|---|---|---|---|
+| Shared architecture, Supabase, Figma, service contracts, integration approval | Project Leader | `src/app/`, `src/services/`, `supabase/`, `docs/`, Figma | Leader-owned docs/backend branch as agreed | Repository baseline |
+| Authentication UI | Auth UI assignee (confirm at kickoff) | `src/features/auth/`, auth routes | `feat/auth-foundation` | Shared auth contract |
+| Landowner frontend | Landowner UI owner (Member 2, 3, or 4 - to be selected) | `src/features/landowner/` | `feat/landowner-module` | Auth, project/package/proposal contracts |
+| Contractor frontend | Contractor UI owner (Member 2, 3, or 4 - to be selected) | `src/features/contractor/` | `feat/contractor-module` | Auth, KYC/storage, discovery/proposal contracts |
+| Execution frontend | Execution UI owner (Member 2, 3, or 4 - to be selected) | `src/features/execution/` | `feat/execution-module` | Awarded package, milestone, storage, change request contracts |
+| Admin frontend | Admin UI owner; may be combined with Execution | `src/features/admin/` | `feat/admin-module` | Admin auth, verification RPC, audit contracts |
+| Cross-module integration | Project Leader + all owners | `src/app/`, `src/services/`, feature folders | PRs into `develop` | Feature PRs |
+| Responsive/RTL/accessibility QA | All owners | Feature folders and test docs | Task-specific fix branches | Integrated UI |
+| E2E/regression and release readiness | Project Leader + all owners | Test suite, README, final docs | QA/release branches as agreed | Integration complete |
 
-### العضو 1: محمود السيد (Project Leader & Architect)
-- **المجال الرئيسي:** قيادة المشروع، البنية المعمارية، قاعدة بيانات Supabase، وتصميم Figma.
-- **المهام المنفذة والمستمرة:**
-  1. تأسيس مشروع React + Vite وTailwind CSS وعميل Supabase المشترك.
-  2. تصميم وتنفيذ هجرات قاعدة بيانات PostgreSQL الـ 4 وسياسات الأمان RLS ووظائف RPC.
-  3. تصميم ملف وتجربة المستخدم Figma لجميع شاشات المنصة الـ 21.
-  4. مراجعة كافة طلبات الدمج (PRs) وضمان التوافقية والأمان.
-  5. إعداد وإدارة مستودع GitHub وأتمتة CI وVercel.
+## Assignment rules
 
----
-
-### العضو 2: مهندس الواجهات (Landowner Module Assignee)
-- **الفرع المخصص:** `feat/landowner-module`
-- **المجلد المسؤول عنه:** `src/features/landowner/`
-- **المهام التفصيلية:**
-  1. تنفيذ شاشة إضافة وتعديل المشروع السكني (`CreateProjectPage.jsx`) وربطها بـ `projectService.createProject`.
-  2. تنفيذ شاشة تفاصيل المشروع وتقسيم حزم العمل (`ProjectPackagesPage.jsx`).
-  3. تنفيذ **شاشة مصفوفة مقارنة عروض المقاولين** وعرض التباين في الأسعار والمواد وجداول الدفعات.
-  4. ربط زر الترسية النهائي بدالة `proposalService.selectContractorProposal`.
-- **العقود والخدمات التي يستخدمها:** `projectService`, `packageService`, `proposalService`.
-
----
-
-### العضو 3: مهندس الواجهات (Contractor Module Assignee)
-- **الفرع المخصص:** `feat/contractor-module`
-- **المجلد المسؤول عنه:** `src/features/contractor/`
-- **المهام التفصيلية:**
-  1. تنفيذ شاشة الملف المهني ورفع مستندات التوثيق (`ContractorProfilePage.jsx`) وربطها بـ `storageService`.
-  2. تنفيذ شاشة استكشاف وتصفية حزم العمل المفتوحة (`ContractorDiscoveryPage.jsx`).
-  3. تنفيذ نموذج تقديم وتعديل عروض الأسعار المهيكلة وجداول الدفعات والمواد المشمولة (`ProposalBuilderPage.jsx`).
-  4. استعراض قائمة العروض الشخصية السابقة ومتابعة حالاتها (`MyProposalsPage.jsx`).
-- **العقود والخدمات التي يستخدمها:** `projectService`, `proposalService`, `storageService`.
-
----
-
-### العضو 4: مهندس الواجهات (Execution & Admin UI Assignee)
-- **الفرع المخصص:** `feat/execution-module` و `feat/admin-module`
-- **المجلد المسؤول عنه:** `src/features/execution/` و `src/features/admin/`
-- **المهام التفصيلية:**
-  1. تنفيذ الخط الزمني لمراحل التنفيذ (`MilestonesTimeline.jsx`).
-  2. تنفيذ نموذج رفع التحديثات الميدانية والصور ونسب الإنجاز (`ProgressUpdateModal.jsx`).
-  3. تنفيذ واجهة طلبات التعديل (Change Requests) للمقاول والمالك.
-  4. تنفيذ زر طلب الاستلام وزر اعتماد إغلاق الحزمة.
-  5. تنفيذ **لوحة تحكم مدير النظام (Admin Dashboard UI)** لمراجعة واعتماد أو رفض توثيق المقاولين وفحص مستنداتهم وسجلات التدقيق.
-- **العقود والخدمات التي يستخدمها:** `executionService`, `adminService`, `storageService`.
+1. The three frontend members (Member 2, Member 3, and Member 4) will select their preferred module ownership at the pre-implementation team handoff gate.
+2. Each task must have one directly responsible owner.
+3. One branch must not have multiple active owners unless file-level ownership is explicitly split.
+4. All feature branches must be synchronized with the latest agreed `develop` before implementation.
+5. Frontend members must not independently modify database migrations, RLS policies, RPC signatures, or storage authorization.
+6. All PRs target `develop`, reference BM task IDs, include test evidence, and require Project Leader review.

@@ -1,0 +1,31 @@
+sequenceDiagram
+  autonumber
+  actor User as Guest / User
+  participant UI as React Presentation Layer
+  participant AuthSvc as authService.js
+  participant GoTrue as Supabase Auth (GoTrue)
+  participant DB as PostgreSQL Database
+  participant RLS as Row Level Security (RLS)
+
+  User->>UI: Enters Registration Details (Email, Password, Name, City, Role)
+  UI->>AuthSvc: register({ email, password, full_name, phone, city, role })
+  AuthSvc->>GoTrue: signUp({ email, password })
+  GoTrue-->>AuthSvc: Returns User Auth Object { id: UUID }
+
+  AuthSvc->>DB: INSERT INTO public.profiles (id, role, full_name, phone, city)
+  DB->>RLS: Evaluates profiles_insert_policy (auth.uid() = id AND role IN ('landowner', 'contractor'))
+  alt Role is valid (landowner or contractor)
+    RLS-->>DB: Policy check PASSED
+    DB-->>AuthSvc: Profile Created
+    opt If role == contractor
+      AuthSvc->>DB: INSERT INTO public.contractor_profiles (id, business_name, ...)
+      DB-->>AuthSvc: Draft Contractor Profile Created
+    end
+    AuthSvc-->>UI: Registration Successful
+    UI-->>User: Redirect to Role Dashboard
+  else Role is admin (Privilege escalation attempt)
+    RLS-->>DB: Policy check REJECTED (403 Forbidden)
+    DB-->>AuthSvc: Error: new row violates row-level security policy
+    AuthSvc-->>UI: Registration Failed: Unauthorized Role
+    UI-->>User: Display Error Banner
+  end

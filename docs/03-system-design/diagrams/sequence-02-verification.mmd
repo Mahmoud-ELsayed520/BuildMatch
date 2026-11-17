@@ -1,0 +1,38 @@
+sequenceDiagram
+  autonumber
+  actor Contractor as Contractor
+  actor Admin as Administrator
+  participant UI as React Presentation Layer
+  participant StorageSvc as storageService.js
+  participant AdminSvc as adminService.js
+  participant StorageAPI as Supabase Storage Engine
+  participant DB as PostgreSQL Database
+  participant RPC as admin_verify_contractor RPC
+
+  %% Step 1: Submission
+  Contractor->>UI: Selects Document Type & Attaches File (e.g., Commercial Register PDF)
+  UI->>StorageSvc: uploadVerificationDoc(contractorId, file)
+  StorageSvc->>StorageAPI: upload to 'verification-docs' ({contractor_id}/{filename})
+  StorageAPI-->>StorageSvc: File Upload Succeeded
+  StorageSvc->>DB: INSERT INTO verification_documents (contractor_id, document_type, file_path)
+  DB-->>UI: Record Created (status: 'pending')
+  UI-->>Contractor: "Document submitted for admin review"
+
+  %% Step 2: Admin Review
+  Admin->>UI: Opens Admin Dashboard & Selects Contractor
+  UI->>AdminSvc: getPendingContractorDocs(contractorId)
+  AdminSvc->>StorageAPI: createSignedUrl('verification-docs', file_path, 3600)
+  StorageAPI-->>AdminSvc: Secure Time-Limited Signed URL
+  AdminSvc-->>UI: Display Contractor Details & File Previews
+  Admin->>UI: Inspects Credentials & Clicks "Approve Contractor"
+
+  %% Step 3: Atomic Verification RPC
+  UI->>AdminSvc: verifyContractor(contractorId, 'approved', 'Documents verified valid')
+  AdminSvc->>RPC: admin_verify_contractor(p_contractor_id, 'approved', notes)
+  Note over RPC: Checks public.is_admin()
+  RPC->>DB: UPDATE contractor_profiles SET verification_status='approved', verified_at=NOW()
+  RPC->>DB: INSERT INTO audit_logs (actor_id, action, entity_type, entity_id)
+  RPC->>DB: INSERT INTO notifications (user_id, title, message)
+  RPC-->>AdminSvc: Return Success JSON
+  AdminSvc-->>UI: Verification Complete
+  UI-->>Admin: "Contractor approved successfully"

@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  actor Landowner as Landowner
+  participant UI as React Presentation Layer
+  participant ExecSvc as executionService.js
+  participant DB as PostgreSQL Database
+  participant RLS as Row Level Security (RLS)
+
+  Landowner->>UI: Clicks "Write Contractor Review" on completed package
+  UI-->>Landowner: Renders Star Rating Form (Overall, Quality, Punctuality, Comm, Comment)
+  Landowner->>UI: Enters Ratings (5 stars overall) and Text Feedback
+  Landowner->>UI: Clicks "Publish Review"
+
+  UI->>ExecSvc: submitReview(packageId, contractorId, reviewData)
+  ExecSvc->>DB: INSERT INTO public.reviews (package_id, reviewer_id, contractor_id, rating_overall, comment)
+  DB->>RLS: Evaluates reviews_insert_policy
+  Note over RLS: Checks package.status = 'completed' AND package.owner_id = auth.uid()
+
+  alt Package is completed and caller is owner
+    RLS-->>DB: Policy check PASSED
+    DB-->>ExecSvc: Review Persisted (is_verified_completion: true)
+    ExecSvc->>DB: INSERT INTO notifications (contractor_id, "You received a new verified review!")
+    ExecSvc-->>UI: Review Published Successfully
+    UI-->>Landowner: "Thank you! Your verified review is published."
+  else Package is not completed or duplicate review
+    RLS-->>DB: Policy check REJECTED / Unique constraint violation
+    DB-->>ExecSvc: Error: Cannot review uncompleted package
+    ExecSvc-->>UI: Submission Failed
+    UI-->>Landowner: Display Error Banner
+  end

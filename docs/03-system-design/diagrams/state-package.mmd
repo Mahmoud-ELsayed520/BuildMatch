@@ -1,0 +1,23 @@
+stateDiagram-v2
+  [*] --> draft : Landowner defines package
+
+  draft --> open : Project published to marketplace
+  draft --> cancelled : Landowner discards package
+
+  open --> under_review : Proposals received & under owner comparison
+  open --> cancelled : Landowner cancels package
+
+  under_review --> assigned : select_contractor_for_package RPC executed
+  under_review --> open : Proposals withdrawn / no match
+  under_review --> cancelled : Landowner cancels package
+
+  assigned --> in_progress : Initial milestone begins execution
+  in_progress --> pending_handover : request_package_handover RPC (All milestones approved)
+
+  pending_handover --> in_progress : Punch list rework requested
+  pending_handover --> completed : approve_package_completion RPC executed
+
+  completed --> closed : Post-completion review submitted / finalized
+
+  cancelled --> [*]
+  closed --> [*]
