@@ -328,9 +328,10 @@ async function executeMigrationCycle(cycleNumber) {
     await runMigrationFile(client, '20261116000003_functions_and_rpc.sql');
     await runMigrationFile(client, '20261116000004_storage_buckets.sql');
     await runMigrationFile(client, '20261117000001_fix_rpc_authorization.sql');
+    await runMigrationFile(client, '20261117000002_set_view_security_invoker.sql');
     await grantPostgrestTablePrivileges(client);
     await runSeedFile(client);
-    console.log(`\n✓ [MIGRATION RUN #${cycleNumber} SUCCESS]: All 5 migrations and seed applied with ZERO skipped statements!`);
+    console.log(`\n✓ [MIGRATION RUN #${cycleNumber} SUCCESS]: All 6 migrations and seed applied with ZERO skipped statements!`);
   } finally {
     await client.end();
   }
@@ -466,12 +467,39 @@ async function runRealSecurityTests() {
     }
   });
 
-  await test('Profiles Privacy: Safe Public Directory exposes only approved contractors and hides phone/notes', async () => {
+  await test('View Security: contractor_public_directory has security_invoker = true', async () => {
+    const res = await client.query(`
+      SELECT c.relname, c.reloptions
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public' AND c.relname = 'contractor_public_directory';
+    `);
+    if (res.rows.length !== 1) {
+      throw new Error('View public.contractor_public_directory does not exist');
+    }
+    const reloptions = res.rows[0].reloptions || [];
+    const hasSecInvoker = reloptions.some(opt => opt === 'security_invoker=true' || opt === 'security_invoker=on');
+    if (!hasSecInvoker) {
+      throw new Error(`Expected security_invoker=true on contractor_public_directory, found: ${JSON.stringify(reloptions)}`);
+    }
+  });
+
+// Updated tests for contractor_public_directory with security_invoker
+  await test('Profiles Privacy: anon cannot see any contractors in public directory (RLS enforced)', async () => {
     const res = await asUser(null, 'anon', async () => {
       return client.query(`SELECT * FROM public.contractor_public_directory;`);
     });
+    if (res.rows.length !== 0) {
+      throw new Error(`Expected 0 rows for anon in contractor_public_directory, got ${res.rows.length}`);
+    }
+  });
+
+  await test('Profiles Privacy: authenticated users see approved contractors without phone/notes', async () => {
+    const res = await asUser(CONTRACTOR1_APPROVED, 'authenticated', async () => {
+      return client.query(`SELECT * FROM public.contractor_public_directory;`);
+    });
     if (res.rows.length < 1) {
-      throw new Error('Expected at least 1 approved contractor in public directory');
+      throw new Error('Expected at least 1 approved contractor in public directory for authenticated user');
     }
     for (const c of res.rows) {
       if ('phone' in c) throw new Error('VULNERABILITY: phone exposed in contractor_public_directory');
