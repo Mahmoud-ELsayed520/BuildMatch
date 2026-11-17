@@ -35,21 +35,24 @@ Out of scope: payments/escrow, live chat, materials marketplace, AI cost estimat
 | Coordination, architecture, shared foundation | Project Leader | Project Leader | All members |
 | Supabase schema, migrations, RLS, RPC, Storage | Project Leader | Project Leader | Frontend members consume contracts |
 | Figma design system and UI/UX handoff | Project Leader | Project Leader | All members review assigned flows |
-| Authentication UI | Project Leader | Auth UI assignee (to be confirmed) | Project Leader |
-| Landowner frontend | Project Leader | Landowner UI role (to be selected) | Other modules consulted |
-| Contractor frontend | Project Leader | Contractor UI role (to be selected) | Other modules consulted |
-| Execution frontend | Project Leader | Execution UI role (to be selected) | Landowner role consulted |
+| Authentication UI | Project Leader | Auth UI assignee (confirm at kickoff) | Project Leader |
+| Landowner frontend | Project Leader | Landowner UI role (Member 2, 3, or 4 - to be selected) | Other modules consulted |
+| Contractor frontend | Project Leader | Contractor UI role (Member 2, 3, or 4 - to be selected) | Other modules consulted |
+| Execution frontend | Project Leader | Execution UI role (Member 2, 3, or 4 - to be selected) | Landowner role consulted |
 | Admin frontend | Project Leader | Admin UI role; may be combined with Execution | Project Leader |
 | Integration, QA, acceptance | Project Leader | Whole team by module | Whole team |
 
-All three non-lead members are React Front-End developers. Their final module assignments remain pending until they choose roles.
+All three non-lead members (Member 2, Member 3, and Member 4) are React Front-End developers.
+
+> **Important Note on Module Allocation:**  
+> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
 
 ## 5. DEPI milestones
 
 | Deliverable | DEPI target | Evidence | Current status |
 |---|---:|---|---|
 | Project Planning & Management | 2026-10-16 | Proposal, plan/Gantt, roles, risks, KPIs | Documents consolidated; role confirmation pending |
-| Literature Review | 2026-10-16 | Lecturer feedback, suggested improvements, grading criteria | Register prepared; lecturer/rubric evidence pending |
+| Literature Review | 2026-10-16 | Lecturer feedback, suggested improvements, grading criteria | Team confirmed no lecturer feedback received (recorded unavailable); numerical rubric weights unavailable |
 | Requirements Gathering | 2026-10-16 | Stakeholders, stories, use cases, FR/NFR | Documented |
 | System Analysis & Design | 2026-11-06 | Architecture, ERD/schema, DFD/UML, UI/UX, API, testing/deployment plans | Completed in `docs/03-system-design/` |
 | Implementation | 2026-11-30 | Source code, collaboration evidence, README, deployed app | Future phase; starter scaffold is not full feature completion |
@@ -59,8 +62,8 @@ All three non-lead members are React Front-End developers. Their final module as
 
 Pre-implementation work:
 - consolidate and correct DEPI documents;
-- obtain or formally mark unavailable lecturer feedback/rubric;
-- collect teammate role choices and name task owners;
+- record unavailable lecturer feedback/rubric;
+- collect teammate role choices (Member 2, Member 3, Member 4) and map task owners;
 - verify Figma handoff and repository baseline;
 - prepare task-level dependencies and acceptance criteria.
 
@@ -74,7 +77,7 @@ Pre-implementation work:
 - Figma design file and verified handoff inventory.
 - API/data contracts, testing strategy, and deployment strategy.
 - BM-001 to BM-030 task breakdown with dependencies, expected folders, and acceptance criteria.
-- Named role owners and synchronized branches (to be completed after team choices).
+- Confirmed module roles for Member 2, Member 3, and Member 4, and synchronized branches.
 
 ## 8. Change control
 

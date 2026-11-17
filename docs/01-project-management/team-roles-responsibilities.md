@@ -1,17 +1,20 @@
 # BuildMatch — Team Roles & RACI
 
-**Status:** Proposed role model. Named assignments are pending teammate selection.
+**Status:** Proposed role model. Member 2, Member 3, and Member 4 retain numbered identifiers, and module allocations remain pending team selection.
+
+> **Important Note on Module Allocation:**  
+> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
 
 ## 1. Team structure
 
-All four members are on the React Front-End track. The Project Leader retains ownership of project coordination, architecture, Supabase/backend foundation, Figma, shared service contracts, and PR approval. The remaining three members choose from the frontend module roles below.
+All four members are on the React Front-End track. The Project Leader retains ownership of project coordination, architecture, Supabase/backend foundation, Figma, shared service contracts, and PR approval. The remaining three members (Member 2, Member 3, and Member 4) choose from the frontend module roles below.
 
-| Role | Main responsibilities | Status |
-|---|---|---|
-| Project Leader / Architect / Backend Owner | Project coordination; architecture; Supabase schema/migrations/RLS/RPC/Storage; Figma; shared contracts; code review and integration | Confirmed |
-| Landowner Frontend Owner | Owner dashboard; project create/edit; work packages; proposal inbox/comparison; selection and owner-side decisions | Available for selection |
-| Contractor Frontend Owner | Contractor profile/KYC UI; package discovery; proposal/BOQ creation and management | Available for selection |
-| Execution & Admin Frontend Owner | Awarded packages; milestones; progress evidence; change requests; handover; admin verification/moderation UI | Available for selection |
+| Role | Main responsibilities | Candidate Identifier | Status |
+|---|---|---|---|
+| Project Leader / Architect / Backend Owner | Project coordination; architecture; Supabase schema/migrations/RLS/RPC/Storage; Figma; shared contracts; code review and integration | Project Leader | Confirmed |
+| Landowner Frontend Owner | Owner dashboard; project create/edit; work packages; proposal inbox/comparison; selection and owner-side decisions | Member 2 / 3 / 4 (Pending selection) | Available for selection |
+| Contractor Frontend Owner | Contractor profile/KYC UI; package discovery; proposal/BOQ creation and management | Member 2 / 3 / 4 (Pending selection) | Available for selection |
+| Execution & Admin Frontend Owner | Awarded packages; milestones; progress evidence; change requests; handover; admin verification/moderation UI | Member 2 / 3 / 4 (Pending selection) | Available for selection |
 
 A member may request a role based on skills and availability. The final allocation must be confirmed by the team before tasks are assigned.
 
@@ -34,8 +37,8 @@ R = Responsible, A = Accountable, C = Consulted, I = Informed.
 
 ## 3. Working boundaries
 
-- Frontend owners consume documented services and API/data contracts.
+- Frontend owners consume documented services and API/data contracts (`docs/03-system-design/16-api-and-integration-design.md`).
 - Only the Project Leader changes schema migrations, RLS policies, RPC signatures, and storage authorization rules unless explicitly delegated.
 - No member commits directly to `main` or `develop`.
 - Each module owner submits PRs to `develop`; Project Leader reviews and approves.
-- Role labels must be replaced with actual names and GitHub usernames after selection.
+- Module ownership will be formally confirmed by the team at the implementation handoff gate.

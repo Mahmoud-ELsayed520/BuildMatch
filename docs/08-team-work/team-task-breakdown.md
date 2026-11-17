@@ -1,7 +1,10 @@
 # BuildMatch — Team Task Breakdown (BM-001 to BM-030)
 
-**Status:** Ready for assignment. Named owners remain pending until teammates choose roles.  
+**Status:** Ready for assignment. Member 2, Member 3, and Member 4 retain numbered identifiers, and module allocations remain pending team selection.  
 **Project Leader:** owns coordination, architecture, Supabase/backend foundation, Figma, shared contracts, and integration approval.
+
+> **Important Note on Module Allocation:**  
+> Module ownership for Member 2, Member 3, and Member 4 is intentionally unassigned until the team confirms its preferred allocation. No module assignment should be inferred from older documentation.
 
 ## Phase 0 — Onboarding
 
